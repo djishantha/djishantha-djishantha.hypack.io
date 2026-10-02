@@ -102,6 +102,7 @@
             padding: 15px;
             background: #eef6ff;
             border-left: 4px solid #2563eb;
+            line-height: 1.6;
         }
 
         .result {
@@ -134,41 +135,28 @@
 
     <p class="description">
         Adjust or invert the Z values in a HYPACK XYZ text file.
-        X and Y values remain unchanged. Only the third column (Z)
-        is modified.
+        X and Y values remain unchanged except for output rounding.
     </p>
 
     <div class="example">
 
-        <strong>Adjustment Example:</strong><br>
+        <strong>Input:</strong><br>
 
-        979390.72 179494.63 37.47<br>
-
-        Adjustment: +1.50<br>
-
-        Result:<br>
-
-        979390.72 179494.63 38.97
+        979419.277 179385.831 -4.078
 
         <br><br>
 
-        <strong>Invert Example:</strong><br>
+        <strong>Output:</strong><br>
 
-        979390.72 179494.63 37.47<br>
-
-        Result:<br>
-
-        979390.72 179494.63 -37.47
+        979419.28 179385.83 -4.1
 
         <br><br>
 
-        <strong>Negative Z Example:</strong><br>
+        <strong>Rounding:</strong><br>
 
-        979399.72 179494.69 -2.47<br>
-
-        Result:<br>
-
-        979399.72 179494.69 2.47
+        X = 2 decimals<br>
+        Y = 2 decimals<br>
+        Z = 1 decimal
 
     </div>
 
@@ -211,13 +199,23 @@
 
     <div class="info">
 
-        <strong>Examples:</strong><br>
+        <strong>Operations:</strong><br>
 
         Enter <strong>1.5</strong> → adds 1.50 to every Z value<br>
 
         Enter <strong>-2.2</strong> → subtracts 2.20 from every Z value<br>
 
         Check <strong>Invert Z Values</strong> → changes positive Z to negative and negative Z to positive
+
+        <br><br>
+
+        <strong>Output rounding:</strong><br>
+
+        X → 2 decimal places<br>
+
+        Y → 2 decimal places<br>
+
+        Z → 1 decimal place
 
     </div>
 
@@ -343,24 +341,24 @@ document.getElementById("processBtn").addEventListener("click", function () {
             if (parts.length >= 3) {
 
                 const x =
-                    parts[0];
+                    Number(parts[0]);
 
                 const y =
-                    parts[1];
+                    Number(parts[1]);
 
                 const z =
                     Number(parts[2]);
 
 
                 if (
-                    Number.isFinite(Number(x)) &&
-                    Number.isFinite(Number(y)) &&
+                    Number.isFinite(x) &&
+                    Number.isFinite(y) &&
                     Number.isFinite(z)
                 ) {
 
 
                     /*
-                     * First apply the Z adjustment.
+                     * Apply Z adjustment
                      */
 
                     let newZ =
@@ -368,8 +366,7 @@ document.getElementById("processBtn").addEventListener("click", function () {
 
 
                     /*
-                     * Then invert Z if checkbox
-                     * is selected.
+                     * Invert Z if selected
                      */
 
                     if (invertZ) {
@@ -380,14 +377,18 @@ document.getElementById("processBtn").addEventListener("click", function () {
 
 
                     /*
-                     * Output Z with two decimal places.
+                     * Format output:
+                     *
+                     * X = 2 decimals
+                     * Y = 2 decimals
+                     * Z = 1 decimal
                      */
 
                     processedLines.push(
 
-                        x + " " +
-                        y + " " +
-                        newZ.toFixed(2)
+                        x.toFixed(2) + " " +
+                        y.toFixed(2) + " " +
+                        newZ.toFixed(1)
 
                     );
 
@@ -405,7 +406,10 @@ document.getElementById("processBtn").addEventListener("click", function () {
 
             } else {
 
-                // Keep lines that don't contain XYZ unchanged
+                /*
+                 * Keep lines that don't contain
+                 * at least X Y Z unchanged.
+                 */
 
                 processedLines.push(line);
 
@@ -415,9 +419,17 @@ document.getElementById("processBtn").addEventListener("click", function () {
         }
 
 
+        /*
+         * Create final output
+         */
+
         outputText =
             processedLines.join("\n");
 
+
+        /*
+         * Display processing information
+         */
 
         status.innerHTML =
 
@@ -439,6 +451,9 @@ document.getElementById("processBtn").addEventListener("click", function () {
 
             "Invert Z: " +
             (invertZ ? "YES" : "NO") +
+            "<br>" +
+
+            "Output format: X=2 decimals, Y=2 decimals, Z=1 decimal" +
 
             "</div>";
 
@@ -452,6 +467,10 @@ document.getElementById("processBtn").addEventListener("click", function () {
                 .slice(0, 10)
                 .join("\n");
 
+
+        /*
+         * Show download button
+         */
 
         downloadBtn.style.display =
             "inline-block";
