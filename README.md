@@ -50,6 +50,29 @@
             border-radius: 6px;
         }
 
+        .invert-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .invert-container label {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .invert-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
         button {
             margin-top: 25px;
             padding: 13px 22px;
@@ -98,6 +121,7 @@
             border-radius: 6px;
             margin-top: 20px;
             font-family: monospace;
+            line-height: 1.6;
         }
     </style>
 </head>
@@ -109,22 +133,48 @@
     <h1>HYPACK XYZ Z Value Adjuster</h1>
 
     <p class="description">
-        Adjust the Z values in a HYPACK XYZ text file.
+        Adjust or invert the Z values in a HYPACK XYZ text file.
         X and Y values remain unchanged. Only the third column (Z)
-        is increased or decreased by the value you enter.
+        is modified.
     </p>
 
     <div class="example">
-        Original:<br>
-        979390.72 179494.63 37.47<br><br>
 
-        Adjustment: +1.50<br><br>
+        <strong>Adjustment Example:</strong><br>
+
+        979390.72 179494.63 37.47<br>
+
+        Adjustment: +1.50<br>
 
         Result:<br>
+
         979390.72 179494.63 38.97
+
+        <br><br>
+
+        <strong>Invert Example:</strong><br>
+
+        979390.72 179494.63 37.47<br>
+
+        Result:<br>
+
+        979390.72 179494.63 -37.47
+
+        <br><br>
+
+        <strong>Negative Z Example:</strong><br>
+
+        979399.72 179494.69 -2.47<br>
+
+        Result:<br>
+
+        979399.72 179494.69 2.47
+
     </div>
 
-    <label for="fileInput">Select HYPACK XYZ / TXT file</label>
+    <label for="fileInput">
+        Select HYPACK XYZ / TXT file
+    </label>
 
     <input
         type="file"
@@ -132,7 +182,9 @@
         accept=".txt,.xyz"
     >
 
-    <label for="adjustment">Z Adjustment</label>
+    <label for="adjustment">
+        Z Adjustment
+    </label>
 
     <input
         type="number"
@@ -142,10 +194,31 @@
         placeholder="Example: 1.5 or -2.2"
     >
 
+    <div class="invert-container">
+
+        <label>
+
+            <input
+                type="checkbox"
+                id="invertZ"
+            >
+
+            Invert Z Values
+
+        </label>
+
+    </div>
+
     <div class="info">
+
         <strong>Examples:</strong><br>
+
         Enter <strong>1.5</strong> → adds 1.50 to every Z value<br>
-        Enter <strong>-2.2</strong> → subtracts 2.20 from every Z value
+
+        Enter <strong>-2.2</strong> → subtracts 2.20 from every Z value<br>
+
+        Check <strong>Invert Z Values</strong> → changes positive Z to negative and negative Z to positive
+
     </div>
 
     <button id="processBtn">
@@ -171,48 +244,90 @@ let originalFileName = "";
 
 document.getElementById("processBtn").addEventListener("click", function () {
 
-    const fileInput = document.getElementById("fileInput");
-    const adjustmentInput = document.getElementById("adjustment");
+    const fileInput =
+        document.getElementById("fileInput");
 
-    const status = document.getElementById("status");
-    const result = document.getElementById("result");
-    const downloadBtn = document.getElementById("downloadBtn");
+    const adjustmentInput =
+        document.getElementById("adjustment");
+
+    const invertZInput =
+        document.getElementById("invertZ");
+
+    const status =
+        document.getElementById("status");
+
+    const result =
+        document.getElementById("result");
+
+    const downloadBtn =
+        document.getElementById("downloadBtn");
+
 
     if (!fileInput.files.length) {
+
         alert("Please select an XYZ or TXT file.");
+
         return;
     }
 
-    const adjustment = Number(adjustmentInput.value);
+
+    const adjustment =
+        Number(adjustmentInput.value);
+
 
     if (!Number.isFinite(adjustment)) {
+
         alert("Please enter a valid adjustment value.");
+
         return;
     }
 
-    const file = fileInput.files[0];
 
-    originalFileName = file.name;
+    const invertZ =
+        invertZInput.checked;
 
-    const reader = new FileReader();
+
+    const file =
+        fileInput.files[0];
+
+
+    originalFileName =
+        file.name;
+
+
+    const reader =
+        new FileReader();
+
 
     reader.onload = function (event) {
 
-        const text = event.target.result;
+        const text =
+            event.target.result;
 
-        const lines = text.split(/\r?\n/);
+
+        const lines =
+            text.split(/\r?\n/);
+
 
         let processedLines = [];
+
         let validPoints = 0;
+
         let unchangedLines = 0;
+
 
         for (let line of lines) {
 
+
             // Keep blank lines unchanged
+
             if (line.trim() === "") {
+
                 processedLines.push(line);
+
                 continue;
             }
+
 
             /*
              * Split the line by whitespace.
@@ -220,13 +335,22 @@ document.getElementById("processBtn").addEventListener("click", function () {
              * Expected:
              * X Y Z
              */
-            const parts = line.trim().split(/\s+/);
+
+            const parts =
+                line.trim().split(/\s+/);
+
 
             if (parts.length >= 3) {
 
-                const x = parts[0];
-                const y = parts[1];
-                const z = Number(parts[2]);
+                const x =
+                    parts[0];
+
+                const y =
+                    parts[1];
+
+                const z =
+                    Number(parts[2]);
+
 
                 if (
                     Number.isFinite(Number(x)) &&
@@ -234,90 +358,176 @@ document.getElementById("processBtn").addEventListener("click", function () {
                     Number.isFinite(z)
                 ) {
 
-                    const newZ = z + adjustment;
+
+                    /*
+                     * First apply the Z adjustment.
+                     */
+
+                    let newZ =
+                        z + adjustment;
+
+
+                    /*
+                     * Then invert Z if checkbox
+                     * is selected.
+                     */
+
+                    if (invertZ) {
+
+                        newZ =
+                            -newZ;
+                    }
+
 
                     /*
                      * Output Z with two decimal places.
                      */
+
                     processedLines.push(
+
                         x + " " +
                         y + " " +
                         newZ.toFixed(2)
+
                     );
 
+
                     validPoints++;
+
 
                 } else {
 
                     processedLines.push(line);
+
                     unchangedLines++;
                 }
+
 
             } else {
 
                 // Keep lines that don't contain XYZ unchanged
+
                 processedLines.push(line);
+
                 unchangedLines++;
             }
+
         }
 
-        outputText = processedLines.join("\n");
+
+        outputText =
+            processedLines.join("\n");
+
 
         status.innerHTML =
+
             "<div class='info'>" +
+
             "<strong>Processing complete.</strong><br>" +
-            "Points processed: " + validPoints.toLocaleString() + "<br>" +
-            "Lines unchanged: " + unchangedLines.toLocaleString() +
+
+            "Points processed: " +
+            validPoints.toLocaleString() +
+            "<br>" +
+
+            "Lines unchanged: " +
+            unchangedLines.toLocaleString() +
+            "<br>" +
+
+            "Z adjustment: " +
+            adjustment.toFixed(2) +
+            "<br>" +
+
+            "Invert Z: " +
+            (invertZ ? "YES" : "NO") +
+
             "</div>";
+
 
         /*
          * Show first 10 processed lines
          */
-        result.textContent =
-            processedLines.slice(0, 10).join("\n");
 
-        downloadBtn.style.display = "inline-block";
+        result.textContent =
+            processedLines
+                .slice(0, 10)
+                .join("\n");
+
+
+        downloadBtn.style.display =
+            "inline-block";
+
     };
 
+
     reader.readAsText(file);
+
 });
 
+
+/*
+ * Download corrected file
+ */
 
 document.getElementById("downloadBtn").addEventListener("click", function () {
 
     if (!outputText) {
+
         alert("Please process a file first.");
+
         return;
     }
+
 
     /*
      * Create downloadable text file
      */
-    const blob = new Blob(
-        [outputText],
-        { type: "text/plain;charset=utf-8" }
-    );
 
-    const url = URL.createObjectURL(blob);
+    const blob =
+        new Blob(
+            [outputText],
+            {
+                type:
+                    "text/plain;charset=utf-8"
+            }
+        );
 
-    const link = document.createElement("a");
 
-    link.href = url;
+    const url =
+        URL.createObjectURL(blob);
+
+
+    const link =
+        document.createElement("a");
+
+
+    link.href =
+        url;
+
 
     /*
      * Create output filename
      */
-    const baseName = originalFileName.replace(/\.[^/.]+$/, "");
 
-    link.download = baseName + "_Z_ADJUSTED.txt";
+    const baseName =
+        originalFileName
+            .replace(/\.[^/.]+$/, "");
+
+
+    link.download =
+        baseName + "_Z_ADJUSTED.txt";
+
 
     document.body.appendChild(link);
 
+
     link.click();
+
 
     document.body.removeChild(link);
 
+
     URL.revokeObjectURL(url);
+
 });
 
 </script>
