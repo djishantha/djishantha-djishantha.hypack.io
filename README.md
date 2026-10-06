@@ -50,6 +50,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .error{background:var(--badbg);color:var(--bad)}
 .result{margin-top:16px;padding:12px 14px;background:var(--paper);border:1px solid var(--line);border-radius:8px;font:13px/1.5 Consolas,Menlo,monospace;white-space:pre-wrap;max-height:260px;overflow:auto}
 .result:empty{display:none}
+#ciProgress{display:none;width:100%;height:14px;margin-top:16px;accent-color:var(--sea)}
 #vdatumProgressContainer{display:none;margin-top:16px}
 #vdatumProgressBar{width:100%;height:14px;accent-color:var(--sea)}
 #vdatumProgressText{margin-top:4px;text-align:center;font-weight:600;font-size:.9rem}
@@ -86,6 +87,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
       <button class="tab-button active" onclick="openTab('vdatumTab', this)">VDATUM</button>
       <button class="tab-button" onclick="openTab('zAdjustTab', this)">Z Adjust</button>
       <button class="tab-button" onclick="openTab('cvTab', this)">Convert Grid</button>
+      <button class="tab-button" onclick="openTab('ciTab', this)">Convert Image</button>
       <button class="tab-button" onclick="openTab('mtxChnTab', this)">Extract XYZ</button>
     </nav>
   </div></div>
@@ -166,6 +168,39 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     </div>
     <div id="cvStatus"></div>
     <div id="cvPreview"></div>
+  </div>
+</div>
+
+<div id="ciTab" class="tab-content">
+  <div class="section">
+    <h2>Convert Image</h2>
+    <p class="description">Re-georeference a TIFF and its TFW to another State Plane zone. NAD83, US survey feet.</p>
+    <label for="ciDir">Conversion</label>
+    <select id="ciDir">
+      <option value="NYLI>NJ">NY Long Island 3104 &rarr; NJ 2900</option>
+      <option value="NJ>NYLI">NJ 2900 &rarr; NY Long Island 3104</option>
+      <option value="NYLI>NYE">NY Long Island 3104 &rarr; NY East 3101</option>
+      <option value="NYE>NYLI">NY East 3101 &rarr; NY Long Island 3104</option>
+      <option value="NJ>NYE">NJ 2900 &rarr; NY East 3101</option>
+      <option value="NYE>NJ">NY East 3101 &rarr; NJ 2900</option>
+    </select>
+    <label for="ciImg">Image (TIF)</label>
+    <input type="file" id="ciImg" accept=".tif,.tiff">
+    <label for="ciTfw">World file (TFW)</label>
+    <input type="file" id="ciTfw" accept=".tfw,.wld,.txt">
+    <label for="ciMode">Output</label>
+    <select id="ciMode">
+      <option value="rot">Rotated TFW (image unchanged)</option>
+      <option value="north">North-up image + TFW (resampled)</option>
+    </select>
+    <div class="actionRow">
+      <button id="ciConvertBtn" class="processBtn" disabled>Convert</button>
+      <button id="ciDlTfw" class="downloadBtn">Download TFW</button>
+      <button id="ciDlTif" class="downloadBtn">Download TIF</button>
+    </div>
+    <progress id="ciProgress" value="0" max="100"></progress>
+    <div id="ciStatus"></div>
+    <div id="ciResult" class="result"></div>
   </div>
 </div>
 
@@ -3369,9 +3404,484 @@ if (typeof document !== "undefined") {
   });
 }
 
-window.__cvTest = {convertXY, cvConvertText};
+window.GridCore = {convertXY, ZONES, cvConvertText};
 })();
 
 </script>
+<script>
+/* ============================================================
+   CONVERT IMAGE TAB: re-georeference a TIFF + TFW between
+   NJ 2900 / NY East 3101 / NY Long Island 3104.
+   Uses the projection code from the Convert Grid tab (window.GridCore).
+============================================================ */
+
+(function () {
+
+const GC = window.GridCore;
+
+/* ---------- TIFF reading ---------- */
+
+function parseIFD(buf) {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 8) throw new Error("This is not a TIFF file.");
+  const bo = dv.getUint16(0);
+  const le = bo === 0x4949 ? true : bo === 0x4D4D ? false : null;
+  if (le === null) throw new Error("This is not a TIFF file.");
+  const magic = dv.getUint16(2, le);
+  if (magic === 43) throw new Error("BigTIFF is not supported.");
+  if (magic !== 42) throw new Error("This is not a TIFF file.");
+  const off = dv.getUint32(4, le);
+  const n = dv.getUint16(off, le);
+  const sizes = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8, 16: 8};
+  const tags = {};
+  for (let i = 0; i < n; i++) {
+    const e = off + 2 + i * 12;
+    const tag = dv.getUint16(e, le), type = dv.getUint16(e + 2, le), count = dv.getUint32(e + 4, le);
+    const sz = (sizes[type] || 1) * count;
+    const vo = sz <= 4 ? e + 8 : dv.getUint32(e + 8, le);
+    const vals = new Array(count);
+    for (let k = 0; k < count; k++) {
+      switch (type) {
+        case 3: vals[k] = dv.getUint16(vo + k * 2, le); break;
+        case 4: vals[k] = dv.getUint32(vo + k * 4, le); break;
+        case 8: vals[k] = dv.getInt16(vo + k * 2, le); break;
+        case 9: vals[k] = dv.getInt32(vo + k * 4, le); break;
+        case 5: vals[k] = dv.getUint32(vo + k * 8, le) / (dv.getUint32(vo + k * 8 + 4, le) || 1); break;
+        case 12: vals[k] = dv.getFloat64(vo + k * 8, le); break;
+        case 16: vals[k] = dv.getUint32(vo + k * 8, le) + dv.getUint32(vo + k * 8 + 4, le) * 4294967296; break;
+        default: vals[k] = dv.getUint8(vo + k);
+      }
+    }
+    tags[tag] = vals;
+  }
+  return {le, tags};
+}
+
+function imageSize(buf) {
+  const {tags} = parseIFD(buf);
+  if (!tags[256] || !tags[257]) throw new Error("Could not read the image size from the TIFF.");
+  return {width: tags[256][0], height: tags[257][0]};
+}
+
+function lzwDecode(src, expected) {
+  const out = new Uint8Array(expected);
+  const prefix = new Int32Array(4096), suffix = new Uint8Array(4096), stack = new Uint8Array(4097);
+  let op = 0, next = 258, bits = 9, bitBuf = 0, bitCnt = 0, sp = 0, prev = -1;
+  function emit(code) {
+    let n = 0, c = code;
+    while (c >= 258) { stack[n++] = suffix[c]; c = prefix[c]; }
+    stack[n++] = c;
+    const first = c;
+    for (let i = n - 1; i >= 0; i--) { if (op < expected) out[op++] = stack[i]; }
+    return first;
+  }
+  while (op < expected) {
+    while (bitCnt < bits && sp < src.length) { bitBuf = ((bitBuf << 8) | src[sp++]) & 0xFFFFFF; bitCnt += 8; }
+    if (bitCnt < bits) break;
+    const code = (bitBuf >> (bitCnt - bits)) & ((1 << bits) - 1);
+    bitCnt -= bits;
+    if (code === 257) break;
+    if (code === 256) { next = 258; bits = 9; prev = -1; continue; }
+    if (prev === -1) {
+      if (op < expected) out[op++] = code;
+      prev = code;
+      continue;
+    }
+    let first;
+    if (code < next) {
+      first = emit(code);
+    } else {
+      let c = prev;
+      while (c >= 258) c = prefix[c];
+      first = c;
+      emit(prev);
+      if (op < expected) out[op++] = first;
+    }
+    if (next < 4096) {
+      prefix[next] = prev; suffix[next] = first; next++;
+      if (next === 511) bits = 10; else if (next === 1023) bits = 11; else if (next === 2047) bits = 12;
+    }
+    prev = code;
+  }
+  return out;
+}
+
+function packBitsDecode(src, expected) {
+  const out = new Uint8Array(expected);
+  let ip = 0, op = 0;
+  while (op < expected && ip < src.length) {
+    const n = (src[ip++] << 24) >> 24;
+    if (n >= 0) {
+      for (let i = 0; i <= n && op < expected; i++) out[op++] = src[ip++];
+    } else if (n !== -128) {
+      const v = src[ip++];
+      for (let i = 0; i < 1 - n && op < expected; i++) out[op++] = v;
+    }
+  }
+  return out;
+}
+
+async function inflate(src) {
+  if (typeof DecompressionStream === "undefined") throw new Error("This browser cannot read Deflate-compressed TIFF files.");
+  const stream = new Blob([src]).stream().pipeThrough(new DecompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function decodeTiff(buf) {
+  const {tags} = parseIFD(buf);
+  const t = (k, d) => (tags[k] ? tags[k] : d);
+  const W = t(256)[0], H = t(257)[0];
+  const bits = t(258, [1]), spp = t(277, [1])[0], comp = t(259, [1])[0];
+  const photo = t(262, [1])[0], planar = t(284, [1])[0], pred = t(317, [1])[0];
+  if (bits.some(b => b !== 8)) throw new Error("Only 8-bit TIFF images are supported for the north-up option.");
+  if (planar !== 1) throw new Error("Planar TIFF layout is not supported for the north-up option.");
+  if (comp === 7 || comp === 6) throw new Error("JPEG-compressed TIFF is not supported for the north-up option.");
+  if (![1, 5, 8, 32946, 32773].includes(comp)) throw new Error("This TIFF compression is not supported for the north-up option.");
+  const bytes = new Uint8Array(buf);
+  const raw = new Uint8Array(W * H * spp);
+
+  async function chunk(off, len, expected) {
+    const src = bytes.subarray(off, off + len);
+    if (comp === 1) return src;
+    if (comp === 5) return lzwDecode(src, expected);
+    if (comp === 32773) return packBitsDecode(src, expected);
+    return inflate(src);
+  }
+  function unpredict(d, rows, w) {
+    if (pred !== 2) return;
+    for (let r = 0; r < rows; r++) {
+      const base = r * w * spp;
+      for (let i = spp; i < w * spp; i++) d[base + i] = (d[base + i] + d[base + i - spp]) & 255;
+    }
+  }
+
+  if (tags[322]) {
+    const tw = tags[322][0], th = tags[323][0], offs = tags[324], cnts = tags[325];
+    const across = Math.ceil(W / tw);
+    for (let i = 0; i < offs.length; i++) {
+      const d = await chunk(offs[i], cnts[i], tw * th * spp);
+      const tmp = d.length >= tw * th * spp ? d : (() => { const z = new Uint8Array(tw * th * spp); z.set(d); return z; })();
+      const copy = comp === 1 ? Uint8Array.from(tmp) : tmp;
+      unpredict(copy, th, tw);
+      const tx = (i % across) * tw, ty = Math.floor(i / across) * th;
+      const cw = Math.min(tw, W - tx), chh = Math.min(th, H - ty);
+      for (let r = 0; r < chh; r++) {
+        raw.set(copy.subarray(r * tw * spp, r * tw * spp + cw * spp), ((ty + r) * W + tx) * spp);
+      }
+    }
+  } else {
+    const rps = Math.min(t(278, [H])[0], H), offs = tags[273], cnts = tags[279];
+    for (let s = 0; s < offs.length; s++) {
+      const rows = Math.min(rps, H - s * rps);
+      if (rows <= 0) break;
+      const need = rows * W * spp;
+      const len = cnts ? cnts[s] : need;
+      let d = await chunk(offs[s], len, need);
+      if (comp === 1) d = Uint8Array.from(d.subarray(0, need));
+      unpredict(d, rows, W);
+      raw.set(d.subarray(0, need), s * rps * W * spp);
+    }
+  }
+
+  /* to RGB or RGBA */
+  const n = W * H;
+  if (photo === 2 && spp >= 3) {
+    const ch = spp >= 4 ? 4 : 3;
+    if (spp === ch) return {width: W, height: H, ch, data: raw};
+    const data = new Uint8Array(n * ch);
+    for (let i = 0; i < n; i++) for (let k = 0; k < ch; k++) data[i * ch + k] = raw[i * spp + k];
+    return {width: W, height: H, ch, data};
+  }
+  if ((photo === 0 || photo === 1) && spp >= 1) {
+    const ch = spp >= 2 ? 4 : 3;
+    const data = new Uint8Array(n * ch);
+    for (let i = 0; i < n; i++) {
+      const g = photo === 0 ? 255 - raw[i * spp] : raw[i * spp];
+      data[i * ch] = data[i * ch + 1] = data[i * ch + 2] = g;
+      if (ch === 4) data[i * ch + 3] = raw[i * spp + 1];
+    }
+    return {width: W, height: H, ch, data};
+  }
+  if (photo === 3 && tags[320]) {
+    const cm = tags[320], cnt = cm.length / 3;
+    const data = new Uint8Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const v = raw[i * spp];
+      data[i * 3] = cm[v] >> 8; data[i * 3 + 1] = cm[cnt + v] >> 8; data[i * 3 + 2] = cm[2 * cnt + v] >> 8;
+    }
+    return {width: W, height: H, ch: 3, data};
+  }
+  throw new Error("This TIFF color type is not supported for the north-up option.");
+}
+
+/* ---------- TIFF writing (uncompressed 8-bit RGB / RGBA) ---------- */
+
+function encodeTiff(data, W, H, ch) {
+  const rps = Math.max(1, Math.floor(65536 / (W * ch)));
+  const nStrips = Math.ceil(H / rps);
+  const dataLen = W * H * ch;
+  const nTags = ch === 4 ? 14 : 13;
+  let pos = 8 + dataLen;
+  if (pos % 2) pos++;
+  const bitsOff = pos; pos += ch * 2;
+  const xresOff = pos; pos += 8;
+  const yresOff = pos; pos += 8;
+  const soOff = pos; pos += nStrips > 1 ? nStrips * 4 : 0;
+  const scOff = pos; pos += nStrips > 1 ? nStrips * 4 : 0;
+  const ifdOff = pos;
+  const total = ifdOff + 2 + nTags * 12 + 4;
+  const buf = new ArrayBuffer(total);
+  const dv = new DataView(buf);
+  new Uint8Array(buf, 8, dataLen).set(data);
+  dv.setUint8(0, 0x49); dv.setUint8(1, 0x49); dv.setUint16(2, 42, true); dv.setUint32(4, ifdOff, true);
+  for (let i = 0; i < ch; i++) dv.setUint16(bitsOff + i * 2, 8, true);
+  dv.setUint32(xresOff, 72, true); dv.setUint32(xresOff + 4, 1, true);
+  dv.setUint32(yresOff, 72, true); dv.setUint32(yresOff + 4, 1, true);
+  const counts = [];
+  for (let s = 0; s < nStrips; s++) {
+    const rows = Math.min(rps, H - s * rps);
+    counts.push(rows * W * ch);
+    if (nStrips > 1) {
+      dv.setUint32(soOff + s * 4, 8 + s * rps * W * ch, true);
+      dv.setUint32(scOff + s * 4, rows * W * ch, true);
+    }
+  }
+  let e = ifdOff;
+  dv.setUint16(e, nTags, true); e += 2;
+  function entry(tag, type, count, value) {
+    dv.setUint16(e, tag, true); dv.setUint16(e + 2, type, true); dv.setUint32(e + 4, count, true);
+    if (type === 3 && count === 1) dv.setUint16(e + 8, value, true); else dv.setUint32(e + 8, value, true);
+    e += 12;
+  }
+  entry(256, 4, 1, W);
+  entry(257, 4, 1, H);
+  entry(258, 3, ch, bitsOff);
+  entry(259, 3, 1, 1);
+  entry(262, 3, 1, 2);
+  entry(273, 4, nStrips, nStrips > 1 ? soOff : 8);
+  entry(277, 3, 1, ch);
+  entry(278, 4, 1, rps);
+  entry(279, 4, nStrips, nStrips > 1 ? scOff : counts[0]);
+  entry(282, 5, 1, xresOff);
+  entry(283, 5, 1, yresOff);
+  entry(284, 3, 1, 1);
+  entry(296, 3, 1, 2);
+  if (ch === 4) entry(338, 3, 1, 2);
+  dv.setUint32(e, 0, true);
+  return buf;
+}
+
+/* ---------- Georeferencing math ---------- */
+
+function parseTfw(text) {
+  const v = text.split(/\s+/).filter(Boolean).slice(0, 6).map(Number);
+  if (v.length < 6 || v.some(x => !isFinite(x))) throw new Error("The TFW file must contain 6 numbers.");
+  return v; /* A D B E C F */
+}
+
+/* Fit X = a*u + b*v + c, Y = d*u + e*v + f over the whole image (u,v = continuous pixel coords). */
+function fitAffine(S, W, H, from, to) {
+  const N = 15, cu = W / 2, cv = H / 2;
+  const rows = [], X = [], Y = [];
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    const u = W * j / (N - 1), v = H * i / (N - 1);
+    const col = u - 0.5, row = v - 0.5;
+    const x = S[0] * col + S[2] * row + S[4], y = S[1] * col + S[3] * row + S[5];
+    const p = GC.convertXY(from, to, x, y);
+    rows.push([u - cu, v - cv, 1]); X.push(p[0]); Y.push(p[1]);
+  }
+  function solve(T) {
+    const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], r = [0, 0, 0];
+    for (let k = 0; k < rows.length; k++) for (let a = 0; a < 3; a++) {
+      r[a] += rows[k][a] * T[k];
+      for (let b = 0; b < 3; b++) M[a][b] += rows[k][a] * rows[k][b];
+    }
+    for (let c = 0; c < 3; c++) {
+      let piv = c;
+      for (let q = c + 1; q < 3; q++) if (Math.abs(M[q][c]) > Math.abs(M[piv][c])) piv = q;
+      [M[c], M[piv]] = [M[piv], M[c]]; [r[c], r[piv]] = [r[piv], r[c]];
+      for (let q = c + 1; q < 3; q++) {
+        const f = M[q][c] / M[c][c];
+        for (let b = c; b < 3; b++) M[q][b] -= f * M[c][b];
+        r[q] -= f * r[c];
+      }
+    }
+    const s = [0, 0, 0];
+    for (let c = 2; c >= 0; c--) {
+      let acc = r[c];
+      for (let b = c + 1; b < 3; b++) acc -= M[c][b] * s[b];
+      s[c] = acc / M[c][c];
+    }
+    return s;
+  }
+  const sx = solve(X), sy = solve(Y);
+  const a = sx[0], b = sx[1], c = sx[2] - a * cu - b * cv;
+  const d = sy[0], e = sy[1], f = sy[2] - d * cu - e * cv;
+  let maxErr = 0;
+  for (let k = 0; k < rows.length; k++) {
+    const u = rows[k][0] + cu, v = rows[k][1] + cv;
+    maxErr = Math.max(maxErr, Math.hypot(a * u + b * v + c - X[k], d * u + e * v + f - Y[k]));
+  }
+  return {T: [a, b, c, d, e, f], maxErr};
+}
+
+const fmt = v => v.toFixed(12);
+function tfwText(v) { return v.map(fmt).join("\r\n") + "\r\n"; }
+
+/* ---------- Resampling (bicubic) to a north-up grid ---------- */
+
+async function warp(img, T, outW, outH, X0, Ytop, ps, onProgress) {
+  const W = img.width, H = img.height, ch = img.ch, src = img.data;
+  const [a, b, c, d, e, f] = T;
+  const det = a * e - b * d;
+  const i00 = e / det, i01 = -b / det, i10 = -d / det, i11 = a / det;
+  const out = new Uint8Array(outW * outH * ch);
+  const A = -0.5;
+  const cub = x => { x = Math.abs(x); return x <= 1 ? ((A + 2) * x - (A + 3)) * x * x + 1 : (x < 2 ? A * (((x - 5) * x + 8) * x - 4) : 0); };
+  const wx = new Float64Array(4), wy = new Float64Array(4), xi = new Int32Array(4), yo = new Int32Array(4);
+  const fill = [255, 255, 255, 0];
+  let o = 0, lastYield = 0;
+  for (let y = 0; y < outH; y++) {
+    const Y = Ytop - (y + 0.5) * ps;
+    for (let x = 0; x < outW; x++) {
+      const dx = X0 + (x + 0.5) * ps - c, dy = Y - f;
+      const u = i00 * dx + i01 * dy, v = i10 * dx + i11 * dy;
+      if (u < 0 || v < 0 || u >= W || v >= H) {
+        for (let k = 0; k < ch; k++) out[o++] = fill[k];
+        continue;
+      }
+      const fu = u - 0.5, fv = v - 0.5;
+      const x0 = Math.floor(fu), y0 = Math.floor(fv), tx = fu - x0, ty = fv - y0;
+      for (let k = 0; k < 4; k++) {
+        wx[k] = cub(tx - (k - 1)); wy[k] = cub(ty - (k - 1));
+        const xx = x0 + k - 1, yy = y0 + k - 1;
+        xi[k] = (xx < 0 ? 0 : xx >= W ? W - 1 : xx) * ch;
+        yo[k] = (yy < 0 ? 0 : yy >= H ? H - 1 : yy) * W * ch;
+      }
+      for (let k = 0; k < ch; k++) {
+        let acc = 0;
+        for (let j = 0; j < 4; j++) {
+          const base = yo[j] + k;
+          acc += wy[j] * (wx[0] * src[base + xi[0]] + wx[1] * src[base + xi[1]] + wx[2] * src[base + xi[2]] + wx[3] * src[base + xi[3]]);
+        }
+        out[o++] = acc < 0 ? 0 : acc > 255 ? 255 : (acc + 0.5) | 0;
+      }
+    }
+    if (onProgress && y - lastYield >= 40) {
+      lastYield = y;
+      onProgress(y / outH);
+      await new Promise(r => setTimeout(r));
+    }
+  }
+  return out;
+}
+
+/* ---------- Main conversion (no DOM) ---------- */
+
+async function convertImage(imgBuf, tfwStr, dir, mode, onProgress) {
+  const [from, to] = dir.split(">");
+  const {width: W, height: H} = imageSize(imgBuf);
+  const S = parseTfw(tfwStr);
+  const fit = fitAffine(S, W, H, from, to);
+  const [a, b, c, d, e, f] = fit.T;
+  const rot = Math.atan2(d, a) * 180 / Math.PI;
+  const scale = Math.hypot(a, d);
+  const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale};
+  if (mode === "rot") {
+    const vals = [a, d, b, e, a * 0.5 + b * 0.5 + c, d * 0.5 + e * 0.5 + f];
+    return {...info, tfw: tfwText(vals), tfwValues: vals, tif: null};
+  }
+  /* north-up */
+  const img = await decodeTiff(imgBuf);
+  const sig3 = Number(Math.sqrt(Math.abs(a * e - b * d)).toPrecision(3));
+  const ps = sig3 > 0 ? sig3 : 1;
+  const corners = [[0, 0], [W, 0], [0, H], [W, H]].map(p => [a * p[0] + b * p[1] + c, d * p[0] + e * p[1] + f]);
+  const xs = corners.map(p => p[0]), ys = corners.map(p => p[1]);
+  const X0 = Math.floor(Math.min(...xs) / ps) * ps, Ytop = Math.ceil(Math.max(...ys) / ps) * ps;
+  const outW = Math.ceil((Math.max(...xs) - X0) / ps - 1e-9), outH = Math.ceil((Ytop - Math.min(...ys)) / ps - 1e-9);
+  if (outW * outH * img.ch > 800e6) throw new Error("The output image would be too large for the browser.");
+  const px = await warp(img, fit.T, outW, outH, X0, Ytop, ps, onProgress);
+  const tif = encodeTiff(px, outW, outH, img.ch);
+  const vals = [ps, 0, 0, -ps, X0 + ps / 2, Ytop - ps / 2];
+  return {...info, tfw: tfwText(vals), tfwValues: vals, tif, outW, outH, ps};
+}
+
+window.ImgCore = {parseIFD, imageSize, decodeTiff, encodeTiff, fitAffine, convertImage, lzwDecode, packBitsDecode};
+
+/* ---------- UI ---------- */
+
+if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) {
+  const $ = id => document.getElementById(id);
+  let imgFile = null, tfwFile = null, outTfw = null, outTif = null, outBase = "";
+
+  function resetOutput() {
+    outTfw = outTif = null;
+    $("ciDlTfw").style.display = "none"; $("ciDlTif").style.display = "none";
+    $("ciStatus").innerHTML = ""; $("ciResult").textContent = ""; $("ciProgress").style.display = "none";
+  }
+  function ready() { $("ciConvertBtn").disabled = !(imgFile && tfwFile); }
+
+  $("ciImg").addEventListener("change", e => { imgFile = e.target.files[0] || null; resetOutput(); ready(); });
+  $("ciTfw").addEventListener("change", e => { tfwFile = e.target.files[0] || null; resetOutput(); ready(); });
+  $("ciDir").addEventListener("change", resetOutput);
+  $("ciMode").addEventListener("change", resetOutput);
+
+  function outName(name, from, to) {
+    const base = name.replace(/\.[^.]+$/, "");
+    const re = new RegExp("(^|[^A-Za-z0-9])" + from + "([^A-Za-z0-9]|$)", "i");
+    return re.test(base) ? base.replace(re, (m, p1, p2) => p1 + to + p2) : base + "_" + to;
+  }
+
+  $("ciConvertBtn").addEventListener("click", async () => {
+    resetOutput();
+    const dir = $("ciDir").value, mode = $("ciMode").value;
+    const [from, to] = dir.split(">");
+    $("ciConvertBtn").disabled = true;
+    const bar = $("ciProgress");
+    try {
+      if (mode === "north") { bar.value = 0; bar.style.display = "block"; }
+      $("ciStatus").innerHTML = '<div class="info">Working...</div>';
+      await new Promise(r => setTimeout(r));
+      const imgBuf = await imgFile.arrayBuffer();
+      const tfwStr = await tfwFile.text();
+      const res = await convertImage(imgBuf, tfwStr, dir, mode, p => { bar.value = Math.round(p * 100); });
+      outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : "");
+      outTfw = new Blob([res.tfw], {type: "text/plain"});
+      outTif = new Blob([res.tif || imgBuf], {type: "image/tiff"});
+      $("ciDlTfw").style.display = "inline-block"; $("ciDlTif").style.display = "inline-block";
+      $("ciStatus").innerHTML = '<div class="success">Done. ' + res.width + ' x ' + res.height + ' px' +
+        (mode === "north" ? ' resampled to ' + res.outW + ' x ' + res.outH + ' px (' + res.ps + ' ft pixels)' : '') +
+        '. Fit error ' + res.maxErr.toFixed(3) + ' ft.</div>';
+      $("ciResult").textContent = res.tfw.replace(/\r\n/g, "\n").trim();
+    } catch (err) {
+      resetOutput();
+      $("ciStatus").innerHTML = '<div class="error">' + String(err.message || err).replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c])) + '</div>';
+    }
+    bar.style.display = "none";
+    ready();
+  });
+
+  function save(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  $("ciDlTfw").addEventListener("click", () => outTfw && save(outTfw, outBase + ".tfw"));
+  $("ciDlTif").addEventListener("click", () => outTif && save(outTif, outBase + ".tif"));
+
+  const clr = $("clearAllBtn");
+  if (clr) clr.addEventListener("click", () => {
+    $("ciImg").value = ""; $("ciTfw").value = ""; imgFile = tfwFile = null;
+    $("ciDir").selectedIndex = 0; $("ciMode").selectedIndex = 0;
+    resetOutput(); ready();
+  });
+}
+
+})();
+
+</script>
+
 </body>
 </html>
