@@ -3,18 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HYPACK Tools</title>
+<title>FREE HYPACK CAD Tools</title>
 <style>
-:root{--ink:#0f2a3d;--sea:#0e7c86;--sea-d:#0a5f67;--paper:#f3f6f7;--line:#d5dfe3;--mut:#5d7280;
-      --ok:#0a6b43;--okbg:#e6f5ec;--bad:#a32017;--badbg:#fdeceb;--tint:#e8f1f3}
+:root{--ink:#0b4f7a;--sea:#0a6ea5;--sea-d:#085888;--paper:#eef6fb;--line:#cfe1ec;--mut:#546e80;
+      --ok:#0a6b43;--okbg:#e6f5ec;--bad:#a32017;--badbg:#fdeceb;--tint:#e1f1fa}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:#17242d;font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
-.top{background:var(--ink);padding:24px 20px 0}
+body{margin:0;background:var(--paper);color:#14303f;font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
 .wrap{max-width:760px;margin:0 auto}
-h1{margin:0 0 20px;font-size:1.55rem;font-weight:700;color:#fff;letter-spacing:.2px}
-.tabs{display:flex;gap:4px;overflow-x:auto}
-.tab-button{flex:0 0 auto;margin:0;padding:11px 18px;border:0;border-radius:8px 8px 0 0;background:transparent;color:#9fb8c6;font:600 15px/1.2 inherit;cursor:pointer}
-.tab-button:hover{color:#fff}
+.top{position:relative;background:linear-gradient(180deg,#3fa6df 0%,#8fd2f1 60%,#cfeefb 100%);overflow:hidden}
+.top .sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.top .wrap{position:relative;padding:26px 20px 6px}
+h1{margin:0;font-size:1.75rem;font-weight:800;color:#06385a;letter-spacing:.3px}
+.surf{position:relative;display:block;width:100%;height:46px;margin-bottom:-1px}
+.sea{position:relative;background:#0a6ea5}
+.sea .wrap{padding:0 20px}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-top:2px}
+.tab-button{flex:0 0 auto;margin:0;padding:11px 18px;border:0;border-radius:8px 8px 0 0;background:transparent;color:#dff2fb;font:600 15px/1.2 inherit;cursor:pointer}
+.tab-button:hover{color:#fff;background:rgba(255,255,255,.12)}
 .tab-button.active{background:var(--paper);color:var(--ink)}
 main{max-width:760px;margin:0 auto;padding:22px 20px 48px}
 .tab-content{display:none}
@@ -62,15 +67,29 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap">
-  <h1>HYPACK Tools</h1>
-  <nav class="tabs">
-    <button class="tab-button active" onclick="openTab('vdatumTab', this)">VDATUM</button>
-    <button class="tab-button" onclick="openTab('zAdjustTab', this)">Z Adjust</button>
-    <button class="tab-button" onclick="openTab('cvTab', this)">Convert Grid</button>
-    <button class="tab-button" onclick="openTab('mtxChnTab', this)">MTX / CHN</button>
-  </nav>
-</div></header>
+<header class="top">
+  <svg class="sky" viewBox="0 0 800 160" preserveAspectRatio="xMaxYMin slice" aria-hidden="true">
+    <g fill="#fff" opacity=".85">
+      <ellipse cx="600" cy="38" rx="46" ry="13"/><ellipse cx="632" cy="30" rx="30" ry="14"/><ellipse cx="572" cy="34" rx="26" ry="10"/>
+      <ellipse cx="730" cy="78" rx="34" ry="9"/><ellipse cx="752" cy="72" rx="20" ry="10"/>
+      <ellipse cx="430" cy="22" rx="30" ry="8" opacity=".7"/>
+    </g>
+    <circle cx="690" cy="26" r="16" fill="#fff6c9" opacity=".9"/>
+  </svg>
+  <div class="wrap"><h1>FREE HYPACK CAD Tools</h1></div>
+  <svg class="surf" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 22 C120 6 240 6 360 22 S600 38 720 22 S960 6 1080 22 S1320 38 1440 22 V46 H0 Z" fill="#5db9e6" opacity=".75"/>
+    <path d="M0 30 C140 14 260 14 400 30 S640 46 780 30 S1020 14 1160 30 S1340 42 1440 30 V46 H0 Z" fill="#0a6ea5"/>
+  </svg>
+  <div class="sea"><div class="wrap">
+    <nav class="tabs">
+      <button class="tab-button active" onclick="openTab('vdatumTab', this)">VDATUM</button>
+      <button class="tab-button" onclick="openTab('zAdjustTab', this)">Z Adjust</button>
+      <button class="tab-button" onclick="openTab('cvTab', this)">Convert Grid</button>
+      <button class="tab-button" onclick="openTab('mtxChnTab', this)">Extract XYZ</button>
+    </nav>
+  </div></div>
+</header>
 
 <main>
 
