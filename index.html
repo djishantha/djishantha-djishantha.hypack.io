@@ -99,10 +99,10 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
   <div class="section">
     <h2>VDATUM Z Adjustment</h2>
     <p class="description">Matches each survey point to the nearest VDATUM point.</p>
-    <label for="vdatumFile">VDATUM MLLW XYZ file</label>
+    <label for="vdatumFile">VDATUM MLLW XYZ file in Elevation</label>
     <input type="file" id="vdatumFile" accept=".xyz,.txt">
     <div id="vdatumName" class="file-name">No VDATUM file selected</div>
-    <label for="surveyFile">Survey XYZ file</label>
+    <label for="surveyFile">Survey XYZ file in Depth</label>
     <input type="file" id="surveyFile" accept=".xyz,.txt">
     <div id="surveyName" class="file-name">No survey file selected</div>
     <label class="check"><input type="checkbox" id="vdatumRound"> Round X Y to 2 decimals, Z to 1 decimal</label>
@@ -128,7 +128,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
   <div class="section">
     <h2>Z Adjust / Invert</h2>
     <p class="description">Shift, invert and round Z values.</p>
-    <label for="zAdjustFile">XYZ / TXT file</label>
+    <label for="zAdjustFile">XYZ/TXT file in Depth</label>
     <input type="file" id="zAdjustFile" accept=".txt,.xyz">
     <label for="zAdjustment">Z adjustment</label>
     <input type="number" id="zAdjustment" value="0" step="0.01" placeholder="1.5 or -2.2">
@@ -190,7 +190,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     <input type="file" id="ciTfw" accept=".tfw,.wld,.txt">
     <label for="ciMode">Output</label>
     <select id="ciMode">
-      <option value="rot">Rotated TFW (image unchanged)</option>
+      <option value="rot">Rotated TFW + NEW TIFF</option>
       <option value="north">North-up image + TFW (resampled)</option>
     </select>
     <div class="actionRow">
@@ -3788,8 +3788,28 @@ async function convertImage(imgBuf, tfwStr, dir, mode, onProgress) {
   const scale = Math.hypot(a, d);
   const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale};
   if (mode === "rot") {
-    const vals = [a, d, b, e, a * 0.5 + b * 0.5 + c, d * 0.5 + e * 0.5 + f];
-    return {...info, tfw: tfwText(vals), tfwValues: vals, tif: null};
+    /*
+       IMPORTANT FOR GLOBAL MAPPER:
+       Never return the original TIFF here.  A Global Mapper TIFF can contain
+       embedded GeoTIFF georeferencing for the OLD coordinate system.  If the
+       original bytes are downloaded, that embedded NYLI georeferencing can
+       override/conflict with the new TFW.
+
+       Decode the pixels and write a completely NEW plain TIFF.  The new TIFF
+       therefore contains no old GeoTIFF georeferencing tags, and the matching
+       TFW supplies the new NJ 2900 position.
+    */
+    const img = await decodeTiff(imgBuf);
+    const vals = [
+      a,
+      d,
+      b,
+      e,
+      a * 0.5 + b * 0.5 + c,
+      d * 0.5 + e * 0.5 + f
+    ];
+    const tif = encodeTiff(img.data, img.width, img.height, img.ch);
+    return {...info, tfw: tfwText(vals), tfwValues: vals, tif, outW: img.width, outH: img.height};
   }
   /* north-up */
   const img = await decodeTiff(imgBuf);
@@ -3847,10 +3867,14 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
       const res = await convertImage(imgBuf, tfwStr, dir, mode, p => { bar.value = Math.round(p * 100); });
       outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : "");
       outTfw = new Blob([res.tfw], {type: "text/plain"});
-      outTif = new Blob([res.tif || imgBuf], {type: "image/tiff"});
+      /* res.tif is ALWAYS a newly encoded TIFF.  Do not fall back to the
+         original bytes because Global Mapper TIFFs may contain old embedded
+         GeoTIFF georeferencing. */
+      outTif = new Blob([res.tif], {type: "image/tiff"});
       $("ciDlTfw").style.display = "inline-block"; $("ciDlTif").style.display = "inline-block";
       $("ciStatus").innerHTML = '<div class="success">Done. ' + res.width + ' x ' + res.height + ' px' +
-        (mode === "north" ? ' resampled to ' + res.outW + ' x ' + res.outH + ' px (' + res.ps + ' ft pixels)' : '') +
+        (mode === "north" ? ' resampled to ' + res.outW + ' x ' + res.outH + ' px (' + res.ps + ' ft pixels)' :
+         ' NEW TIFF written without the original embedded georeferencing') +
         '. Fit error ' + res.maxErr.toFixed(3) + ' ft.</div>';
       $("ciResult").textContent = res.tfw.replace(/\r\n/g, "\n").trim();
     } catch (err) {
