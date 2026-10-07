@@ -193,11 +193,13 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     <select id="ciMode">
       <option value="rot">Rotated TFW + NEW TIFF</option>
       <option value="north">North-up image + TFW (resampled)</option>
+      <option value="geotiff">GeoTIFF (embedded georeferencing, no TFW)</option>
     </select>
     <div class="actionRow">
       <button id="ciConvertBtn" class="processBtn" disabled>Convert</button>
       <button id="ciDlTfw" class="downloadBtn">Download TFW</button>
       <button id="ciDlTif" class="downloadBtn">Download TIF</button>
+      <button id="ciDlGeo" class="downloadBtn">Download GeoTIFF</button>
     </div>
     <progress id="ciProgress" value="0" max="100"></progress>
     <div id="ciStatus"></div>
@@ -3618,11 +3620,15 @@ async function decodeTiff(buf) {
 
 /* ---------- TIFF writing (uncompressed 8-bit RGB / RGBA) ---------- */
 
-function encodeTiff(data, W, H, ch) {
+function encodeTiff(data, W, H, ch, geo) {
   const rps = Math.max(1, Math.floor(65536 / (W * ch)));
   const nStrips = Math.ceil(H / rps);
   const dataLen = W * H * ch;
-  const nTags = ch === 4 ? 14 : 13;
+
+  /* Optional embedded GeoTIFF information.  The raster itself remains
+     uncompressed 8-bit RGB/RGBA, just like the normal TIFF writer. */
+  const hasGeo = !!geo;
+  const nTags = (ch === 4 ? 14 : 13) + (hasGeo ? 2 : 0);
   let pos = 8 + dataLen;
   if (pos % 2) pos++;
   const bitsOff = pos; pos += ch * 2;
@@ -3630,6 +3636,15 @@ function encodeTiff(data, W, H, ch) {
   const yresOff = pos; pos += 8;
   const soOff = pos; pos += nStrips > 1 ? nStrips * 4 : 0;
   const scOff = pos; pos += nStrips > 1 ? nStrips * 4 : 0;
+
+  let mtOff = 0, keyOff = 0;
+  if (hasGeo) {
+    if (pos % 8) pos += 8 - (pos % 8);
+    mtOff = pos; pos += 16 * 8;
+    if (pos % 2) pos++;
+    keyOff = pos; pos += 20 * 2; // GeoKeyDirectory: 4 header + 4 keys x 4 shorts
+  }
+
   const ifdOff = pos;
   const total = ifdOff + 2 + nTags * 12 + 4;
   const buf = new ArrayBuffer(total);
@@ -3639,15 +3654,35 @@ function encodeTiff(data, W, H, ch) {
   for (let i = 0; i < ch; i++) dv.setUint16(bitsOff + i * 2, 8, true);
   dv.setUint32(xresOff, 72, true); dv.setUint32(xresOff + 4, 1, true);
   dv.setUint32(yresOff, 72, true); dv.setUint32(yresOff + 4, 1, true);
+
   const counts = [];
-  for (let s = 0; s < nStrips; s++) {
-    const rows = Math.min(rps, H - s * rps);
+  for (let st = 0; st < nStrips; st++) {
+    const rows = Math.min(rps, H - st * rps);
     counts.push(rows * W * ch);
     if (nStrips > 1) {
-      dv.setUint32(soOff + s * 4, 8 + s * rps * W * ch, true);
-      dv.setUint32(scOff + s * 4, rows * W * ch, true);
+      dv.setUint32(soOff + st * 4, 8 + st * rps * W * ch, true);
+      dv.setUint32(scOff + st * 4, rows * W * ch, true);
     }
   }
+
+  if (hasGeo) {
+    const m = geo.matrix;
+    for (let i = 0; i < 16; i++) dv.setFloat64(mtOff + i * 8, Number(m[i]), true);
+
+    const epsg = Number(geo.epsg);
+    const keys = [
+      1024, 0, 1, 1,       // GTModelTypeGeoKey = Projected
+      1025, 0, 1, 1,       // GTRasterTypeGeoKey = PixelIsArea
+      2048, 0, 1, 4269,    // GeographicTypeGeoKey = NAD83
+      3072, 0, 1, epsg     // ProjectedCSTypeGeoKey
+    ];
+    dv.setUint16(keyOff, 1, true);      // GeoTIFF version
+    dv.setUint16(keyOff + 2, 1, true);  // revision major
+    dv.setUint16(keyOff + 4, 0, true);  // revision minor
+    dv.setUint16(keyOff + 6, 4, true);  // number of keys
+    for (let i = 0; i < keys.length; i++) dv.setUint16(keyOff + 8 + i * 2, keys[i], true);
+  }
+
   let e = ifdOff;
   dv.setUint16(e, nTags, true); e += 2;
   function entry(tag, type, count, value) {
@@ -3669,10 +3704,13 @@ function encodeTiff(data, W, H, ch) {
   entry(284, 3, 1, 1);
   entry(296, 3, 1, 2);
   if (ch === 4) entry(338, 3, 1, 2);
+  if (hasGeo) {
+    entry(34264, 12, 16, mtOff); // ModelTransformationTag
+    entry(34735, 3, 20, keyOff); // GeoKeyDirectoryTag
+  }
   dv.setUint32(e, 0, true);
   return buf;
 }
-
 /* ---------- Georeferencing math ---------- */
 
 function parseTfw(text) {
@@ -3830,6 +3868,28 @@ async function convertImage(imgBuf, tfwStr, dir, mode, onProgress) {
   const rot = Math.atan2(d, a) * 180 / Math.PI;
   const scale = Math.hypot(a, d);
   const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale, sourceInfo};
+  if (mode === "geotiff") {
+    const img = await decodeTiff(imgBuf);
+    const vals = [
+      a,
+      d,
+      b,
+      e,
+      a * 0.5 + b * 0.5 + c,
+      d * 0.5 + e * 0.5 + f
+    ];
+    const epsg = to === "NJ" ? 3424 : (to === "NYLI" ? 2263 : 2260);
+    const tif = encodeTiff(img.data, img.width, img.height, img.ch, {
+      epsg,
+      matrix: [
+        a, b, 0, vals[4],
+        d, e, 0, vals[5],
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ]
+    });
+    return {...info, tfw: tfwText(vals), tfwValues: vals, tif, outW: img.width, outH: img.height, geoEpsg: epsg};
+  }
   if (mode === "rot") {
     /*
        IMPORTANT FOR GLOBAL MAPPER:
@@ -3875,11 +3935,11 @@ window.ImgCore = {parseIFD, imageSize, decodeTiff, encodeTiff, fitAffine, conver
 
 if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) {
   const $ = id => document.getElementById(id);
-  let imgFile = null, tfwFile = null, outTfw = null, outTif = null, outBase = "";
+  let imgFile = null, tfwFile = null, outTfw = null, outTif = null, outGeo = null, outBase = "";
 
   function resetOutput() {
-    outTfw = outTif = null;
-    $("ciDlTfw").style.display = "none"; $("ciDlTif").style.display = "none";
+    outTfw = outTif = outGeo = null;
+    $("ciDlTfw").style.display = "none"; $("ciDlTif").style.display = "none"; $("ciDlGeo").style.display = "none";
     $("ciStatus").innerHTML = ""; $("ciResult").textContent = ""; $("ciProgress").style.display = "none";
   }
   function ready() { $("ciConvertBtn").disabled = !imgFile; }
@@ -3908,15 +3968,19 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
       const imgBuf = await imgFile.arrayBuffer();
       const tfwStr = tfwFile ? await tfwFile.text() : null;
       const res = await convertImage(imgBuf, tfwStr, dir, mode, p => { bar.value = Math.round(p * 100); });
-      outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : "");
+      outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : (mode === "geotiff" ? "_GeoTiff" : ""));
       outTfw = new Blob([res.tfw], {type: "text/plain"});
       /* res.tif is ALWAYS a newly encoded TIFF.  Do not fall back to the
          original bytes because Global Mapper TIFFs may contain old embedded
          GeoTIFF georeferencing. */
       outTif = new Blob([res.tif], {type: "image/tiff"});
-      $("ciDlTfw").style.display = "inline-block"; $("ciDlTif").style.display = "inline-block";
+      outGeo = mode === "geotiff" ? outTif : null;
+      $("ciDlTfw").style.display = mode === "geotiff" ? "none" : "inline-block";
+      $("ciDlTif").style.display = mode === "geotiff" ? "none" : "inline-block";
+      $("ciDlGeo").style.display = mode === "geotiff" ? "inline-block" : "none";
       $("ciStatus").innerHTML = '<div class="success">Done. ' + res.width + ' x ' + res.height + ' px' +
         (mode === "north" ? ' resampled to ' + res.outW + ' x ' + res.outH + ' px (' + res.ps + ' ft pixels)' :
+         mode === "geotiff" ? ' NEW GeoTIFF with embedded EPSG:' + res.geoEpsg + ' georeferencing (no TFW required)' :
          ' NEW TIFF written without the original embedded georeferencing') +
         '. Fit error ' + res.maxErr.toFixed(3) + ' ft.</div>';
       $("ciResult").textContent = res.tfw.replace(/\r\n/g, "\n").trim();
@@ -3937,6 +4001,7 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
   }
   $("ciDlTfw").addEventListener("click", () => outTfw && save(outTfw, outBase + ".tfw"));
   $("ciDlTif").addEventListener("click", () => outTif && save(outTif, outBase + ".tif"));
+  $("ciDlGeo").addEventListener("click", () => outGeo && save(outGeo, outBase + ".tif"));
 
   const clr = $("clearAllBtn");
   if (clr) clr.addEventListener("click", () => {
