@@ -174,7 +174,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 <div id="ciTab" class="tab-content">
   <div class="section">
     <h2>Convert Image</h2>
-    <p class="description">Re-georeference a TIFF and its TFW to another State Plane zone. NAD83, US survey feet.</p>
+    <p class="description">Re-georeference a TIFF using embedded GeoTIFF georeferencing or an optional TFW. NAD83, US survey feet.</p>
     <label for="ciDir">Conversion</label>
     <select id="ciDir">
       <option value="NYLI>NJ">NY Long Island 3104 &rarr; NJ 2900</option>
@@ -186,8 +186,9 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     </select>
     <label for="ciImg">Image (TIF)</label>
     <input type="file" id="ciImg" accept=".tif,.tiff">
-    <label for="ciTfw">World file (TFW)</label>
+    <label for="ciTfw">World file (TFW) — optional</label>
     <input type="file" id="ciTfw" accept=".tfw,.wld,.txt">
+    <p class="hint">If the TIFF contains embedded GeoTIFF georeferencing, no TFW is required. The embedded CRS is detected automatically.</p>
     <label for="ciMode">Output</label>
     <select id="ciMode">
       <option value="rot">Rotated TFW + NEW TIFF</option>
@@ -240,6 +241,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <script>
 
 function roundHalfUp(v, d) {
@@ -3679,6 +3681,32 @@ function parseTfw(text) {
   return v; /* A D B E C F */
 }
 
+/* Read embedded GeoTIFF CRS and convert its pixel-corner georeferencing to TFW pixel-center form. */
+function embeddedGeoTfw(image) {
+  const fd = image.getFileDirectory ? image.getFileDirectory() : {};
+  const rawKeys = image.getGeoKeys ? image.getGeoKeys() : null;
+  const keys = rawKeys || {};
+  const epsg = Number(keys.ProjectedCSTypeGeoKey || keys.ProjectedCRSGeoKey || 0);
+  const zones = {2260:"NYE",6538:"NYE",2263:"NYLI",6539:"NYLI",3424:"NJ"};
+  const zone = zones[epsg] || null;
+
+  const mt = fd.ModelTransformation;
+  if (mt && mt.length >= 16) {
+    const a=Number(mt[0]), b=Number(mt[1]), d=Number(mt[4]), e=Number(mt[5]);
+    const c=Number(mt[3]), f=Number(mt[7]);
+    if ([a,b,c,d,e,f].every(Number.isFinite))
+      return {tfw:[a,d,b,e,c+.5*a+.5*b,f+.5*d+.5*e],zone,epsg,source:"Embedded GeoTIFF ModelTransformation"};
+  }
+
+  const scale=fd.ModelPixelScale, tie=fd.ModelTiepoint;
+  if (scale && tie && scale.length>=2 && tie.length>=6) {
+    const sx=Number(scale[0]), sy=Math.abs(Number(scale[1])), tx=Number(tie[3]), ty=Number(tie[4]);
+    if ([sx,sy,tx,ty].every(Number.isFinite))
+      return {tfw:[sx,0,0,-sy,tx+sx/2,ty-sy/2],zone,epsg,source:"Embedded GeoTIFF ModelPixelScale/ModelTiepoint"};
+  }
+  return null;
+}
+
 /* Fit X = a*u + b*v + c, Y = d*u + e*v + f over the whole image (u,v = continuous pixel coords). */
 function fitAffine(S, W, H, from, to) {
   const N = 15, cu = W / 2, cv = H / 2;
@@ -3781,12 +3809,27 @@ async function warp(img, T, outW, outH, X0, Ytop, ps, onProgress) {
 async function convertImage(imgBuf, tfwStr, dir, mode, onProgress) {
   const [from, to] = dir.split(">");
   const {width: W, height: H} = imageSize(imgBuf);
-  const S = parseTfw(tfwStr);
+  let S = null, sourceInfo = "";
+  const geoTiff = await GeoTIFF.fromArrayBuffer(imgBuf);
+  const geoImage = await geoTiff.getImage();
+  const embedded = embeddedGeoTfw(geoImage);
+  if (embedded) {
+    if (embedded.zone && embedded.zone !== from) {
+      throw new Error("The TIFF is embedded as " + embedded.zone + " (EPSG:" + embedded.epsg + "), but the selected conversion starts from " + from + ".");
+    }
+    S = embedded.tfw;
+    sourceInfo = embedded.source + (embedded.epsg ? " (EPSG:" + embedded.epsg + ")" : "");
+  }
+  if (!S && tfwStr) {
+    S = parseTfw(tfwStr);
+    sourceInfo = "External TFW";
+  }
+  if (!S) throw new Error("No embedded GeoTIFF georeferencing or TFW was found.");
   const fit = fitAffine(S, W, H, from, to);
   const [a, b, c, d, e, f] = fit.T;
   const rot = Math.atan2(d, a) * 180 / Math.PI;
   const scale = Math.hypot(a, d);
-  const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale};
+  const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale, sourceInfo};
   if (mode === "rot") {
     /*
        IMPORTANT FOR GLOBAL MAPPER:
@@ -3839,7 +3882,7 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
     $("ciDlTfw").style.display = "none"; $("ciDlTif").style.display = "none";
     $("ciStatus").innerHTML = ""; $("ciResult").textContent = ""; $("ciProgress").style.display = "none";
   }
-  function ready() { $("ciConvertBtn").disabled = !(imgFile && tfwFile); }
+  function ready() { $("ciConvertBtn").disabled = !imgFile; }
 
   $("ciImg").addEventListener("change", e => { imgFile = e.target.files[0] || null; resetOutput(); ready(); });
   $("ciTfw").addEventListener("change", e => { tfwFile = e.target.files[0] || null; resetOutput(); ready(); });
@@ -3863,7 +3906,7 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
       $("ciStatus").innerHTML = '<div class="info">Working...</div>';
       await new Promise(r => setTimeout(r));
       const imgBuf = await imgFile.arrayBuffer();
-      const tfwStr = await tfwFile.text();
+      const tfwStr = tfwFile ? await tfwFile.text() : null;
       const res = await convertImage(imgBuf, tfwStr, dir, mode, p => { bar.value = Math.round(p * 100); });
       outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : "");
       outTfw = new Blob([res.tfw], {type: "text/plain"});
