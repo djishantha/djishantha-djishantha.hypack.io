@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:#14303f;font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
 .wrap{max-width:760px;margin:0 auto}
-.top{position:relative;background:linear-gradient(180deg,#3fa6df 0%,#8fd2f1 60%,#cfeefb 100%);overflow:hidden}
+.top{position:relative;width:min(720px,calc(100% - 40px));margin:0 auto;background:linear-gradient(180deg,#3fa6df 0%,#8fd2f1 60%,#cfeefb 100%);overflow:hidden}
 .top .sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .top .wrap{position:relative;padding:26px 20px 6px}
 h1{margin:0;font-size:1.75rem;font-weight:800;color:#06385a;letter-spacing:.3px}
