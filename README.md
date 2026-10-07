@@ -3883,5 +3883,14 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
 
 </script>
 
+<script>
+/* Removes any stray text accidentally pasted above or between the page elements */
+(function () {
+  Array.from(document.body.childNodes).forEach(function (n) {
+    if (n.nodeType === 3 && n.nodeValue.trim()) n.parentNode.removeChild(n);
+  });
+})();
+</script>
+
 </body>
 </html>
