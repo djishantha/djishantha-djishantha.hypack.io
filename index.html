@@ -209,33 +209,33 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 
 <div id="mtxChnTab" class="tab-content">
   <div class="section">
-    <h2>MTX &rarr; Four Corner XYZ</h2>
-    <p class="description">Outside corners of an MTX grid.</p>
-    <label for="mtxFile">MTX file</label>
-    <input type="file" id="mtxFile" accept=".mtx,.txt">
-    <label for="mtxZ">Corner Z</label>
-    <input type="number" id="mtxZ" value="0" step="0.1">
-    <div class="actionRow">
-      <button id="mtxProcessBtn" class="processBtn">Process</button>
-      <button id="mtxDownloadBtn" class="downloadBtn">Download XYZ</button>
-      <button id="mtxClearBtn" class="clearBtn">Clear</button>
-    </div>
-    <div id="mtxStatus"></div>
-    <div id="mtxResult" class="result"></div>
-  </div>
+    <h2>Extract XYZ</h2>
+    <p class="description">Choose the file type, select one file, then process and download the XYZ result.</p>
 
-  <div class="section">
-    <h2>CHN &rarr; XYZ Nodes</h2>
-    <p class="description">Channel nodes as X Y Z.</p>
-    <label for="chnFile">CHN file</label>
-    <input type="file" id="chnFile" accept=".chn,.txt">
-    <div class="actionRow">
-      <button id="chnProcessBtn" class="processBtn">Process</button>
-      <button id="chnDownloadBtn" class="downloadBtn">Download XYZ</button>
-      <button id="chnClearBtn" class="clearBtn">Clear</button>
+    <label for="extractType">Extraction</label>
+    <select id="extractType">
+      <option value="mtx">MTX &rarr; Four Corner XYZ</option>
+      <option value="chn">CHN &rarr; XYZ Nodes</option>
+      <option value="dxf">DXF chn---&gt;XYZ nodes</option>
+    </select>
+
+    <div id="mtxZRow">
+      <label for="extractMtxZ">Corner Z</label>
+      <input type="number" id="extractMtxZ" value="0" step="0.1">
     </div>
-    <div id="chnStatus"></div>
-    <div id="chnResult" class="result"></div>
+
+    <label for="extractFile">File</label>
+    <input type="file" id="extractFile" accept=".mtx,.txt">
+    <div id="extractFileName" class="file-name">No file selected</div>
+
+    <div class="actionRow">
+      <button id="extractProcessBtn" class="processBtn" disabled>Process</button>
+      <button id="extractDownloadBtn" class="downloadBtn">Download XYZ</button>
+      <button id="extractClearBtn" class="clearBtn">Clear</button>
+    </div>
+
+    <div id="extractStatus"></div>
+    <div id="extractResult" class="result"></div>
   </div>
 </div>
 
@@ -294,233 +294,156 @@ let chnOriginalFileName = "";
 
 
 /* ============================================================
-   MTX PROCESS
+   EXTRACT XYZ - SIMPLE UNIFIED TOOL
 ============================================================ */
 
-document
-.getElementById("mtxProcessBtn")
-.addEventListener("click", function() {
+let extractOutputText = "";
+let extractOriginalFileName = "";
 
+const extractType = document.getElementById("extractType");
+const extractFile = document.getElementById("extractFile");
+const extractProcessBtn = document.getElementById("extractProcessBtn");
+const extractDownloadBtn = document.getElementById("extractDownloadBtn");
+const extractClearBtn = document.getElementById("extractClearBtn");
+const extractStatus = document.getElementById("extractStatus");
+const extractResult = document.getElementById("extractResult");
+const extractFileName = document.getElementById("extractFileName");
+const mtxZRow = document.getElementById("mtxZRow");
+const extractMtxZ = document.getElementById("extractMtxZ");
 
-    const fileInput =
-        document.getElementById("mtxFile");
-
-
-    const zInput =
-        document.getElementById("mtxZ");
-
-
-    const status =
-        document.getElementById("mtxStatus");
-
-
-    const result =
-        document.getElementById("mtxResult");
-
-
-    const downloadBtn =
-        document.getElementById("mtxDownloadBtn");
-
-
-    if (!fileInput.files.length) {
-
-        alert("Please select an MTX file.");
-
-        return;
-
+function updateExtractFileType(){
+    const type = extractType.value;
+    if(type === "mtx") {
+        extractFile.accept = ".mtx,.txt";
+        mtxZRow.style.display = "block";
+    } else if(type === "chn") {
+        extractFile.accept = ".chn,.txt";
+        mtxZRow.style.display = "none";
+    } else {
+        extractFile.accept = ".dxf";
+        mtxZRow.style.display = "none";
     }
+    extractFile.value = "";
+    extractFileName.textContent = "No file selected";
+    extractProcessBtn.disabled = true;
+    extractDownloadBtn.style.display = "none";
+    extractStatus.innerHTML = "";
+    extractResult.textContent = "";
+    extractOutputText = "";
+    extractOriginalFileName = "";
+}
 
+extractType.addEventListener("change", updateExtractFileType);
 
-    const zValue =
-        Number(zInput.value);
-
-
-    if (!Number.isFinite(zValue)) {
-
-        alert("Please enter a valid Z value.");
-
-        return;
-
+extractFile.addEventListener("change", function(){
+    if(this.files.length){
+        extractFileName.textContent = this.files[0].name;
+        extractProcessBtn.disabled = false;
+    } else {
+        extractFileName.textContent = "No file selected";
+        extractProcessBtn.disabled = true;
     }
-
-
-    const file =
-        fileInput.files[0];
-
-
-    mtxOriginalFileName =
-        file.name;
-
-
-    const reader =
-        new FileReader();
-
-
-    reader.onload =
-        function(event) {
-
-
-            const text =
-                event.target.result;
-
-
-            const values =
-                extractMTXValues(text);
-
-
-            if (values.length < 7) {
-
-                status.innerHTML =
-                    "<div class='error'>" +
-
-                    "<strong>Error:</strong><br>" +
-
-                    "Could not find the required " +
-                    "7 MTX values.<br>" +
-
-                    "Values found: " +
-                    values.length +
-
-                    "</div>";
-
-                downloadBtn.style.display =
-                    "none";
-
-                return;
-
-            }
-
-
-            /*
-             * MTX structure
-             *
-             * 0 = X
-             * 1 = Y
-             * 2 = Width
-             * 3 = First Leg / Length
-             * 4 = Grid X
-             * 5 = Grid Y
-             * 6 = Bearing
-             */
-
-
-            const x0 =
-                values[0];
-
-            const y0 =
-                values[1];
-
-            const width =
-                values[2];
-
-            const length =
-                values[3];
-
-            const bearingDeg =
-                values[6];
-
-
-            /*
-             * Calculate four corners.
-             */
-
-            const corners =
-                calculateCorners(
-                    x0,
-                    y0,
-                    width,
-                    length,
-                    bearingDeg,
-                    zValue
-                );
-
-
-            /*
-             * Create XYZ output.
-             */
-
-            mtxOutputText =
-                corners
-                .map(function(point) {
-
-                    return (
-                        point.x.toFixed(3) +
-                        " " +
-                        point.y.toFixed(3) +
-                        " " +
-                        point.z.toFixed(1)
-                    );
-
-                })
-                .join("\n");
-
-
-            /*
-             * Status.
-             */
-
-            status.innerHTML =
-                "<div class='success'>" +
-
-                "<strong>MTX processing complete.</strong>" +
-
-                "<br><br>" +
-
-                "X: " +
-                x0 +
-
-                "<br>" +
-
-                "Y: " +
-                y0 +
-
-                "<br>" +
-
-                "Width: " +
-                width +
-
-                "<br>" +
-
-                "First Leg: " +
-                length +
-
-                "<br>" +
-
-                "Bearing from North: " +
-                bearingDeg +
-                "°" +
-
-                "<br>" +
-
-                "Z: " +
-                zValue +
-
-                "</div>";
-
-
-            /*
-             * Preview.
-             */
-
-            result.textContent =
-                mtxOutputText;
-
-
-            /*
-             * Show download.
-             */
-
-            downloadBtn.style.display =
-                "inline-block";
-
-        };
-
-
-    reader.readAsText(file);
-
+    extractDownloadBtn.style.display = "none";
+    extractStatus.innerHTML = "";
+    extractResult.textContent = "";
+    extractOutputText = "";
 });
 
+extractProcessBtn.addEventListener("click", async function(){
+    if(!extractFile.files.length){
+        alert("Please select a file.");
+        return;
+    }
 
+    const type = extractType.value;
+    const file = extractFile.files[0];
+    extractOriginalFileName = file.name;
+    extractOutputText = "";
+    extractDownloadBtn.style.display = "none";
+    extractResult.textContent = "";
+    extractStatus.innerHTML = "<div class='info'>Processing...</div>";
+
+    try {
+        if(type === "mtx") {
+            const z = Number(extractMtxZ.value);
+            if(!Number.isFinite(z)) throw new Error("Please enter a valid Corner Z value.");
+
+            const text = await file.text();
+            const values = extractMTXValues(text);
+            if(values.length < 7) throw new Error("Could not find the required 7 MTX values. Values found: " + values.length);
+
+            const corners = calculateCorners(values[0], values[1], values[2], values[3], values[6], z);
+            extractOutputText = corners.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(1);
+            }).join("\n")+"\n";
+
+            extractResult.textContent = extractOutputText;
+            extractStatus.innerHTML = "<div class='success'><strong>MTX processing complete.</strong><br><br>4 corner XYZ points created.</div>";
+        }
+        else if(type === "chn") {
+            const text = await file.text();
+            const points = extractCHNNodes(text);
+            if(!points.length) throw new Error("No CHN nodes were found.");
+
+            extractOutputText = points.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n")+"\n";
+
+            extractResult.textContent = points.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (points.length>20 ? "\n\n... "+(points.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>CHN processing complete.</strong><br><br>Nodes extracted: "+points.length.toLocaleString()+"</div>";
+        }
+        else {
+            const text = await file.text();
+            const nodes = processDXFText(text);
+            if(!nodes.length) throw new Error("No channel XYZ nodes were found in the DXF file.");
+
+            extractOutputText = nodes.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n")+"\n";
+
+            extractResult.textContent = extractOutputText;
+            extractStatus.innerHTML = "<div class='success'><strong>DXF processing complete.</strong><br><br>Final unique channel nodes: "+nodes.length.toLocaleString()+"</div>";
+        }
+
+        extractDownloadBtn.style.display = "inline-block";
+    } catch(e) {
+        console.error(e);
+        extractStatus.innerHTML = "<div class='error'><strong>Error:</strong><br>" + String(e.message || e).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}) + "</div>";
+    }
+});
+
+extractDownloadBtn.addEventListener("click", function(){
+    if(!extractOutputText){
+        alert("Please process a file first.");
+        return;
+    }
+    const type = extractType.value;
+    const base = extractOriginalFileName.replace(/\.[^/.]+$/, "");
+    const suffix = type === "mtx" ? "_four_corners.xyz" : "_nodes.xyz";
+    const url = URL.createObjectURL(new Blob([extractOutputText], {type:"text/plain;charset=utf-8"}));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = base + suffix;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+});
+
+extractClearBtn.addEventListener("click", function(){
+    extractFile.value = "";
+    extractFileName.textContent = "No file selected";
+    extractStatus.innerHTML = "";
+    extractResult.textContent = "";
+    extractDownloadBtn.style.display = "none";
+    extractProcessBtn.disabled = true;
+    extractOutputText = "";
+    extractOriginalFileName = "";
+});
+
+updateExtractFileType();
 
 /* ============================================================
    EXTRACT MTX VALUES
@@ -751,294 +674,6 @@ function calculateCorners(
 
 
 /* ============================================================
-   MTX DOWNLOAD
-============================================================ */
-
-document
-.getElementById("mtxDownloadBtn")
-.addEventListener("click", function() {
-
-
-    if (!mtxOutputText) {
-
-        alert(
-            "Please process an MTX file first."
-        );
-
-        return;
-
-    }
-
-
-    const blob =
-        new Blob(
-            [mtxOutputText],
-            {
-                type:
-                    "text/plain;charset=utf-8"
-            }
-        );
-
-
-    const url =
-        URL.createObjectURL(blob);
-
-
-    const link =
-        document.createElement("a");
-
-
-    link.href =
-        url;
-
-
-    const baseName =
-        mtxOriginalFileName
-        .replace(
-            /\.[^/.]+$/,
-            ""
-        );
-
-
-    link.download =
-        baseName +
-        "_four_corners.xyz";
-
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-
-
-    URL.revokeObjectURL(url);
-
-});
-
-
-
-/* ============================================================
-   MTX CLEAR
-============================================================ */
-
-document
-.getElementById("mtxClearBtn")
-.addEventListener("click", function() {
-
-
-    document.getElementById(
-        "mtxFile"
-    ).value = "";
-
-
-    document.getElementById(
-        "mtxZ"
-    ).value = "0";
-
-
-    document.getElementById(
-        "mtxStatus"
-    ).innerHTML = "";
-
-
-    document.getElementById(
-        "mtxResult"
-    ).textContent = "";
-
-
-    document.getElementById(
-        "mtxDownloadBtn"
-    ).style.display = "none";
-
-
-    mtxOutputText = "";
-
-    mtxOriginalFileName = "";
-
-});
-
-
-
-/* ============================================================
-   CHN PROCESS
-============================================================ */
-
-document
-.getElementById("chnProcessBtn")
-.addEventListener("click", function() {
-
-
-    const fileInput =
-        document.getElementById("chnFile");
-
-
-    const status =
-        document.getElementById("chnStatus");
-
-
-    const result =
-        document.getElementById("chnResult");
-
-
-    const downloadBtn =
-        document.getElementById(
-            "chnDownloadBtn"
-        );
-
-
-    if (!fileInput.files.length) {
-
-        alert("Please select a CHN file.");
-
-        return;
-
-    }
-
-
-    const file =
-        fileInput.files[0];
-
-
-    chnOriginalFileName =
-        file.name;
-
-
-    const reader =
-        new FileReader();
-
-
-    reader.onload =
-        function(event) {
-
-
-            const text =
-                event.target.result;
-
-
-            const points =
-                extractCHNNodes(text);
-
-
-            if (
-                points.length === 0
-            ) {
-
-                status.innerHTML =
-                    "<div class='error'>" +
-
-                    "<strong>Error:</strong><br>" +
-
-                    "No CHN nodes were found." +
-
-                    "<br><br>" +
-
-                    "The CHN file structure may be different " +
-                    "from the expected HYPACK node format." +
-
-                    "</div>";
-
-
-                result.textContent = "";
-
-                downloadBtn.style.display =
-                    "none";
-
-                return;
-
-            }
-
-
-            /*
-             * Create XYZ output.
-             */
-
-            chnOutputText =
-                points
-                .map(function(point) {
-
-                    return (
-                        point.x.toFixed(3) +
-                        " " +
-                        point.y.toFixed(3) +
-                        " " +
-                        point.z.toFixed(3)
-                    );
-
-                })
-                .join("\n");
-
-
-            /*
-             * Status.
-             */
-
-            status.innerHTML =
-                "<div class='success'>" +
-
-                "<strong>CHN processing complete.</strong>" +
-
-                "<br><br>" +
-
-                "Nodes extracted: " +
-
-                points.length.toLocaleString() +
-
-                "</div>";
-
-
-            /*
-             * Preview first 20 nodes.
-             */
-
-            result.textContent =
-                points
-                .slice(0, 20)
-                .map(function(point) {
-
-                    return (
-                        point.x.toFixed(3) +
-                        " " +
-                        point.y.toFixed(3) +
-                        " " +
-                        point.z.toFixed(3)
-                    );
-
-                })
-                .join("\n");
-
-
-            if (
-                points.length > 20
-            ) {
-
-                result.textContent +=
-                    "\n\n... " +
-                    (
-                        points.length - 20
-                    ).toLocaleString() +
-                    " more points ...";
-
-            }
-
-
-            /*
-             * Show download.
-             */
-
-            downloadBtn.style.display =
-                "inline-block";
-
-        };
-
-
-    reader.readAsText(file);
-
-});
-
-
-
-/* ============================================================
    EXTRACT CHN NODES
 ============================================================ */
 
@@ -1209,108 +844,122 @@ function extractCHNNodes(text) {
 
 
 /* ============================================================
-   CHN DOWNLOAD
+   DXF PARSER USED BY UNIFIED EXTRACT XYZ TOOL
 ============================================================ */
 
-document
-.getElementById("chnDownloadBtn")
-.addEventListener("click", function() {
+function processDXFText(text){
+    const pairs = makePairs(text);
+    const entities = splitEntities(pairs);
+    const endpoints = [];
 
+    for(const entity of entities){
+        const type = getEntityType(entity);
 
-    if (!chnOutputText) {
-
-        alert(
-            "Please process a CHN file first."
-        );
-
-        return;
-
+        if(type === "LINE"){
+            let p1={x:null,y:null,z:0};
+            let p2={x:null,y:null,z:0};
+            for(const p of entity){
+                if(p.code===10) p1.x=Number(p.value);
+                else if(p.code===20) p1.y=Number(p.value);
+                else if(p.code===30) p1.z=Number(p.value);
+                else if(p.code===11) p2.x=Number(p.value);
+                else if(p.code===21) p2.y=Number(p.value);
+                else if(p.code===31) p2.z=Number(p.value);
+            }
+            if(Number.isFinite(p1.x)&&Number.isFinite(p1.y)&&Number.isFinite(p2.x)&&Number.isFinite(p2.y)){
+                endpoints.push(p1,p2);
+            }
+        }
+        else if(type === "LWPOLYLINE"){
+            const vertices=parseLWPolyline(entity);
+            if(vertices.length===2) endpoints.push(vertices[0],vertices[1]);
+        }
     }
 
+    for(let i=0;i<entities.length;i++){
+        if(getEntityType(entities[i])!=="POLYLINE") continue;
+        let flags=0;
+        for(const p of entities[i]){
+            if(p.code===70){flags=Number(p.value);break;}
+        }
+        if((flags & 8)===0) continue;
 
-    const blob =
-        new Blob(
-            [chnOutputText],
-            {
-                type:
-                    "text/plain;charset=utf-8"
-            }
-        );
+        const vertices=[];
+        let j=i+1;
+        for(;j<entities.length;j++){
+            const t=getEntityType(entities[j]);
+            if(t==="VERTEX"){
+                let x=null,y=null,z=0;
+                for(const p of entities[j]){
+                    if(p.code===10)x=Number(p.value);
+                    else if(p.code===20)y=Number(p.value);
+                    else if(p.code===30)z=Number(p.value);
+                }
+                if(Number.isFinite(x)&&Number.isFinite(y)) vertices.push({x,y,z});
+            } else if(t==="SEQEND") break;
+            else break;
+        }
+        if(vertices.length>=2) endpoints.push(vertices[0],vertices[vertices.length-1]);
+        i=j;
+    }
 
+    return removeDuplicates(endpoints);
+}
 
-    const url =
-        URL.createObjectURL(blob);
+function makePairs(text){
+    const lines=text.replace(/\r/g,"").split("\n"), pairs=[];
+    for(let i=0;i+1<lines.length;i+=2){
+        const code=Number(lines[i].trim());
+        if(!Number.isFinite(code)) continue;
+        pairs.push({code,value:lines[i+1].trim()});
+    }
+    return pairs;
+}
 
+function splitEntities(pairs){
+    const entities=[]; let inside=false, current=null;
+    for(const p of pairs){
+        if(p.code===2 && p.value.toUpperCase()==="ENTITIES"){inside=true;continue;}
+        if(!inside) continue;
+        if(p.code===0 && p.value.toUpperCase()==="ENDSEC"){
+            if(current) entities.push(current);
+            break;
+        }
+        if(p.code===0){
+            if(current) entities.push(current);
+            current=[p];
+        } else if(current) current.push(p);
+    }
+    return entities;
+}
 
-    const link =
-        document.createElement("a");
+function getEntityType(e){
+    const p=e.find(x=>x.code===0);
+    return p ? p.value.toUpperCase() : "";
+}
 
+function parseLWPolyline(entity){
+    const vertices=[]; let x=null,y=null,z=0;
+    for(const p of entity){
+        if(p.code===10){
+            if(x!==null && y!==null) vertices.push({x,y,z});
+            x=Number(p.value); y=null; z=0;
+        } else if(p.code===20 && x!==null) y=Number(p.value);
+        else if(p.code===30 && x!==null) z=Number(p.value);
+    }
+    if(x!==null && y!==null) vertices.push({x,y,z});
+    return vertices;
+}
 
-    link.href =
-        url;
-
-
-    const baseName =
-        chnOriginalFileName
-        .replace(
-            /\.[^/.]+$/,
-            ""
-        );
-
-
-    link.download =
-        baseName +
-        "_nodes.xyz";
-
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-
-
-    URL.revokeObjectURL(url);
-
-});
-
-
-
-/* ============================================================
-   CHN CLEAR
-============================================================ */
-
-document
-.getElementById("chnClearBtn")
-.addEventListener("click", function() {
-
-
-    document.getElementById(
-        "chnFile"
-    ).value = "";
-
-
-    document.getElementById(
-        "chnStatus"
-    ).innerHTML = "";
-
-
-    document.getElementById(
-        "chnResult"
-    ).textContent = "";
-
-
-    document.getElementById(
-        "chnDownloadBtn"
-    ).style.display = "none";
-
-
-    chnOutputText = "";
-
-    chnOriginalFileName = "";
-
-});
-
+function removeDuplicates(points){
+    const result=[], seen=new Set();
+    for(const p of points){
+        const x=Number(p.x.toFixed(9)), y=Number(p.y.toFixed(9)), z=Number(p.z.toFixed(9));
+        const key=x+"|"+y+"|"+z;
+        if(!seen.has(key)){seen.add(key);result.push({x,y,z});}
+    }
+    return result;
+}
 
 
 /* ============================================================
@@ -1321,22 +970,18 @@ document
 .getElementById("clearAllBtn")
 .addEventListener("click", function() {
 
-    /* MTX */
-    document.getElementById("mtxFile").value = "";
-    document.getElementById("mtxZ").value = "0";
-    document.getElementById("mtxStatus").innerHTML = "";
-    document.getElementById("mtxResult").textContent = "";
-    document.getElementById("mtxDownloadBtn").style.display = "none";
-    mtxOutputText = "";
-    mtxOriginalFileName = "";
-
-    /* CHN */
-    document.getElementById("chnFile").value = "";
-    document.getElementById("chnStatus").innerHTML = "";
-    document.getElementById("chnResult").textContent = "";
-    document.getElementById("chnDownloadBtn").style.display = "none";
-    chnOutputText = "";
-    chnOriginalFileName = "";
+    /* Extract XYZ */
+    document.getElementById("extractType").value = "mtx";
+    document.getElementById("extractMtxZ").value = "0";
+    document.getElementById("extractFile").value = "";
+    document.getElementById("extractFileName").textContent = "No file selected";
+    document.getElementById("extractStatus").innerHTML = "";
+    document.getElementById("extractResult").textContent = "";
+    document.getElementById("extractDownloadBtn").style.display = "none";
+    document.getElementById("extractProcessBtn").disabled = true;
+    extractOutputText = "";
+    extractOriginalFileName = "";
+    updateExtractFileType();
 
     /* VDATUM */
     document.getElementById("vdatumFile").value = "";
