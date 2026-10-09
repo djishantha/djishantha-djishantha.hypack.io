@@ -294,13 +294,15 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 <div id="mtxChnTab" class="tab-content">
   <div class="section">
     <h2>Extract XYZ</h2>
-    <p class="description">Choose the file type, select one file, then process and download the XYZ result.</p>
+    <p class="description">Choose an extraction type: MTX corners, CHN nodes, channel DXF nodes, contour DXF vertices, or HYPACK sounding DXF points.</p>
 
     <label for="extractType">Extraction</label>
     <select id="extractType">
       <option value="mtx">MTX &rarr; Four Corner XYZ</option>
       <option value="chn">CHN &rarr; XYZ Nodes</option>
       <option value="dxf">DXF chn---&gt;XYZ nodes</option>
+      <option value="contourDxf">Contour DXF ---&gt;XYZ Points</option>
+      <option value="soundingDxf">Sounding DXF ---&gt;XYZ Points</option>
     </select>
 
     <div id="mtxZRow">
@@ -478,7 +480,7 @@ extractProcessBtn.addEventListener("click", async function(){
             }).join("\n") + (points.length>20 ? "\n\n... "+(points.length-20).toLocaleString()+" more points ..." : "");
             extractStatus.innerHTML = "<div class='success'><strong>CHN processing complete.</strong><br><br>Nodes extracted: "+points.length.toLocaleString()+"</div>";
         }
-        else {
+        else if(type === "dxf") {
             const text = await file.text();
             const nodes = processDXFText(text);
             if(!nodes.length) throw new Error("No channel XYZ nodes were found in the DXF file.");
@@ -487,8 +489,39 @@ extractProcessBtn.addEventListener("click", async function(){
                 return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
             }).join("\n")+"\n";
 
-            extractResult.textContent = extractOutputText;
-            extractStatus.innerHTML = "<div class='success'><strong>DXF processing complete.</strong><br><br>Final unique channel nodes: "+nodes.length.toLocaleString()+"</div>";
+            extractResult.textContent = nodes.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (nodes.length>20 ? "\n\n... "+(nodes.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>DXF channel-node processing complete.</strong><br><br>Final unique channel nodes: "+nodes.length.toLocaleString()+"</div>";
+        }
+        else if(type === "contourDxf") {
+            const text = await file.text();
+            const nodes = processContourDXFText(text);
+            if(!nodes.length) throw new Error("No contour vertices were found. Check that the DXF contains standard contour geometry.");
+
+            extractOutputText = nodes.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\r\n")+"\r\n";
+
+            extractResult.textContent = nodes.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (nodes.length>20 ? "\n\n... "+(nodes.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>Contour DXF processing complete.</strong><br><br>Unique contour XYZ points: "+nodes.length.toLocaleString()+"</div>";
+        }
+        else if(type === "soundingDxf") {
+            const text = await file.text();
+            const result = processSoundingDXFText(text);
+            const nodes = result.points;
+            if(!nodes.length) throw new Error("No sounding XYZ points were found. This workflow expects HYPACK sounding DXF XDATA or supported point entities.");
+
+            extractOutputText = nodes.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\r\n")+"\r\n";
+
+            extractResult.textContent = nodes.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (nodes.length>20 ? "\n\n... "+(nodes.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>Sounding DXF processing complete.</strong><br><br>Unique XYZ points: "+nodes.length.toLocaleString()+"<br>Using HYPACK sounding positions: "+result.hypack.toLocaleString()+"<br>Fallback TEXT positions: "+result.fallback.toLocaleString()+"</div>";
         }
 
         extractDownloadBtn.style.display = "inline-block";
@@ -505,7 +538,10 @@ extractDownloadBtn.addEventListener("click", function(){
     }
     const type = extractType.value;
     const base = extractOriginalFileName.replace(/\.[^/.]+$/, "");
-    const suffix = type === "mtx" ? "_four_corners.xyz" : "_nodes.xyz";
+    const suffix = type === "mtx" ? "_four_corners.xyz"
+        : type === "contourDxf" ? "_contour_points.xyz"
+        : type === "soundingDxf" ? "_sounding_points.xyz"
+        : "_nodes.xyz";
     const url = URL.createObjectURL(new Blob([extractOutputText], {type:"text/plain;charset=utf-8"}));
     const a = document.createElement("a");
     a.href = url;
@@ -926,6 +962,139 @@ function extractCHNNodes(text) {
     return points;
 }
 
+
+/* ============================================================
+   CONTOUR DXF -> XYZ POINTS
+   Extracts all stored vertices from common contour entities.
+============================================================ */
+
+function processContourDXFText(text){
+    const pairs = makePairs(text);
+    const entities = splitEntities(pairs);
+    const points = [];
+
+    function addPoint(x,y,z){
+        if(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)){
+            points.push({x:x,y:y,z:z});
+        }
+    }
+    function num(entity, code, fallback=null){
+        const item = entity.find(p => p.code === code);
+        if(!item) return fallback;
+        const n = Number(item.value);
+        return Number.isFinite(n) ? n : fallback;
+    }
+
+    for(let i=0;i<entities.length;i++){
+        const entity = entities[i];
+        const type = getEntityType(entity);
+
+        if(type === "POINT"){
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+        } else if(type === "LINE"){
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+            addPoint(num(entity,11),num(entity,21),num(entity,31,0));
+        } else if(type === "LWPOLYLINE"){
+            const elevation = num(entity,38,0);
+            let x = null, y = null;
+            for(const p of entity){
+                if(p.code === 10){
+                    if(x !== null && y !== null) addPoint(x,y,elevation);
+                    x = Number(p.value); y = null;
+                } else if(p.code === 20 && x !== null){
+                    y = Number(p.value);
+                    addPoint(x,y,elevation);
+                    x = null; y = null;
+                }
+            }
+        } else if(type === "POLYLINE"){
+            let j = i + 1;
+            const vertices = [];
+            for(;j<entities.length;j++){
+                const nextType = getEntityType(entities[j]);
+                if(nextType === "VERTEX"){
+                    const v = entities[j];
+                    addPoint(num(v,10),num(v,20),num(v,30,0));
+                    vertices.push(v);
+                } else if(nextType === "SEQEND"){
+                    break;
+                } else {
+                    break;
+                }
+            }
+            i = j;
+        } else if(type === "VERTEX"){
+            // Normally consumed with its parent POLYLINE; standalone records are still usable.
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+        } else if(type === "3DFACE"){
+            for(let k=0;k<4;k++){
+                addPoint(num(entity,10+k),num(entity,20+k),num(entity,30+k,0));
+            }
+        } else if(type === "SPLINE"){
+            // DXF SPLINE control points are stored as repeated 10/20/30 groups.
+            let x=null,y=null,z=0;
+            for(const p of entity){
+                if(p.code===10){
+                    x=Number(p.value); y=null; z=0;
+                } else if(p.code===20 && x!==null){
+                    y=Number(p.value);
+                } else if(p.code===30 && x!==null){
+                    z=Number(p.value);
+                    if(y!==null){addPoint(x,y,z);x=null;y=null;z=0;}
+                }
+            }
+            if(x!==null && y!==null) addPoint(x,y,z);
+        }
+    }
+    return removeDuplicates(points);
+}
+
+/* ============================================================
+   SOUNDING DXF -> XYZ POINTS
+   Prefer HYPACK XDATA sounding positions (1011/1021/1031)
+   over shifted TEXT label insertion positions (10/20/30).
+============================================================ */
+
+function processSoundingDXFText(text){
+    const pairs = makePairs(text);
+    const entities = splitEntities(pairs);
+    const points = [];
+    let hypack = 0, fallback = 0;
+
+    function num(entity, code, fallbackValue=null){
+        const item = entity.find(p => p.code === code);
+        if(!item) return fallbackValue;
+        const n = Number(item.value);
+        return Number.isFinite(n) ? n : fallbackValue;
+    }
+    function addPoint(x,y,z){
+        if(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)){
+            points.push({x:x,y:y,z:z});
+        }
+    }
+
+    for(const entity of entities){
+        const type = getEntityType(entity);
+        if(type === "TEXT" || type === "MTEXT"){
+            const hx = num(entity,1011);
+            const hy = num(entity,1021);
+            let hz = num(entity,1031);
+            if(hx !== null && hy !== null){
+                if(hz === null) hz = num(entity,30,0);
+                addPoint(hx,hy,hz);
+                hypack++;
+            } else {
+                const x = num(entity,10), y = num(entity,20), z = num(entity,30,0);
+                addPoint(x,y,z);
+                if(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) fallback++;
+            }
+        } else if(type === "POINT"){
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+        }
+    }
+
+    return {points:removeDuplicates(points), hypack:hypack, fallback:fallback};
+}
 
 /* ============================================================
    DXF PARSER USED BY UNIFIED EXTRACT XYZ TOOL
