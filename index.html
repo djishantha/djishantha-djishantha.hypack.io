@@ -24,6 +24,12 @@ h1{margin:0;font-size:1.75rem;font-weight:800;color:#06385a;letter-spacing:.3px}
 main{max-width:1100px;margin:0 auto;padding:22px 20px 48px}
 .tab-content{display:none}
 .tab-content.active{display:block}
+.convert-sub-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding:6px;background:#dceef8;border:1px solid var(--line);border-radius:10px}
+.convert-sub-button{flex:1 1 140px;padding:10px 16px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink);font-weight:700;cursor:pointer}
+.convert-sub-button:hover{background:rgba(10,110,165,.10)}
+.convert-sub-button.active{background:var(--sea);color:#fff}
+.convert-sub-content{display:none}
+.convert-sub-content.active{display:block}
 .section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px;margin-bottom:16px}
 .section h2{margin:0 0 2px;font-size:1.15rem;color:var(--ink)}
 .description{margin:0;color:var(--mut);font-size:.92rem}
@@ -64,6 +70,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #cvPreview th{color:var(--mut);font-weight:600}
 .footer{display:flex;justify-content:flex-end;margin-top:4px}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+.file-picker-input{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.file-picker-label{display:inline-block;margin:0;padding:11px 20px;border-radius:8px;background:var(--ink);color:#fff;font-weight:600;cursor:pointer}
+.file-picker-label:hover{opacity:.9}
+.file-picker-label:focus-within{outline:3px solid var(--sea);outline-offset:2px}
 @media(max-width:560px){.tab-button{padding:10px 12px;font-size:14px}.section{padding:16px}}
 
     .combine-file-row {
@@ -113,7 +123,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
       <button class="tab-button active" onclick="openTab('vdatumTab', this)">VDATUM</button>
       <button class="tab-button" onclick="openTab('zAdjustTab', this)">Z Adjust</button>
       <button class="tab-button" onclick="openTab('combineXYZTab', this)">Combine XYZ</button>
-      <button class="tab-button" onclick="openTab('cvTab', this)">Convert Grid</button>
+      <button class="tab-button" onclick="openTab('cvTab', this)">Convert Data</button>
       <button class="tab-button" onclick="openTab('ciTab', this)">Convert Image</button>
       <button class="tab-button" onclick="openTab('mtxChnTab', this)">Extract XYZ</button>
     </nav>
@@ -229,8 +239,14 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 </div>
 
 <div id="cvTab" class="tab-content">
+  <nav class="convert-sub-tabs" aria-label="Convert Data tools">
+    <button type="button" class="convert-sub-button active" onclick="openConvertSubTab('convertXYZPane', this)">Convert XYZ</button>
+    <button type="button" class="convert-sub-button" onclick="openConvertSubTab('convertRAWPane', this)">Convert RAW</button>
+    <button type="button" class="convert-sub-button" onclick="openConvertSubTab('convertHSXPane', this)">Convert HSX</button>
+  </nav>
+  <div id="convertXYZPane" class="convert-sub-content active">
   <div class="section">
-    <h2>Convert Grid</h2>
+    <h2>Convert XYZ</h2>
     <p class="description">NAD83, US survey feet. Z is unchanged.</p>
     <label for="cvDir">Conversion</label>
     <select id="cvDir">
@@ -242,16 +258,71 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
       <option value="NYLI>NYE">NY Long Island 3104 &rarr; NY East 3101</option>
     </select>
     <p id="cvNote" class="hint" style="display:none">Same projection, so X Y stay the same.</p>
-    <label for="cvFile">File</label>
-    <input type="file" id="cvFile" accept=".txt,.xyz,.csv,.pts,.dat">
+    <label for="cvFile">Input files</label>
+    <input type="file" id="cvFile" class="file-picker-input" accept=".txt,.xyz,.csv,.pts,.dat" multiple>
+    <label for="cvFile" class="file-picker-label">Choose Files</label>
+    <p id="cvFileNames" class="file-name">No files selected</p>
     <label class="check"><input type="checkbox" id="cvRound"> Round X Y to 2 decimals, Z to 1 decimal</label>
     <p class="hint">Columns are detected automatically. Projection only; no datum shift applied.</p>
     <div class="actionRow">
-      <button id="cvConvertBtn" class="processBtn" disabled>Convert</button>
-      <button id="cvDownloadBtn" class="downloadBtn">Download</button>
+      <button id="cvConvertBtn" class="processBtn" disabled>Convert All</button>
+      <button id="cvDownloadBtn" class="downloadBtn">Download ZIP</button>
     </div>
     <div id="cvStatus"></div>
     <div id="cvPreview"></div>
+  </div>
+
+  </div>
+  <div id="convertRAWPane" class="convert-sub-content">
+  <div class="section">
+    <h2>Convert RAW</h2>
+    <p class="description">Convert HYPACK RAW navigation coordinates between the same six NAD83 State Plane options. Z and survey measurements are unchanged.</p>
+    <label for="rawDir">Conversion</label>
+    <select id="rawDir">
+      <option value="NJ>NYLI">NJ 2900 &rarr; NY Long Island 3104</option>
+      <option value="NYLI>NJ">NY Long Island 3104 &rarr; NJ 2900</option>
+      <option value="NJ>NYE">NJ 2900 &rarr; NY East 3101</option>
+      <option value="NYE>NJ">NY East 3101 &rarr; NJ 2900</option>
+      <option value="NYE>NYLI">NY East 3101 &rarr; NY Long Island 3104</option>
+      <option value="NYLI>NYE">NY Long Island 3104 &rarr; NY East 3101</option>
+    </select>
+    <label for="rawFile">RAW files</label>
+    <input type="file" id="rawFile" class="file-picker-input" accept=".raw" multiple>
+    <label for="rawFile" class="file-picker-label">Choose Files</label>
+    <p id="rawFileNames" class="file-name">No files selected</p>
+    <label class="check"><input type="checkbox" id="rawRound"> Round X Y to 2 decimals, Z to 1 decimal</label>
+    <div class="actionRow">
+      <button id="rawConvertBtn" class="processBtn" disabled>Convert All RAW</button>
+      <button id="rawDownloadBtn" class="downloadBtn">Download ZIP</button>
+    </div>
+    <div id="rawStatus"></div>
+  </div>
+
+  </div>
+  <div id="convertHSXPane" class="convert-sub-content">
+  <div class="section">
+    <h2>Convert HSX</h2>
+    <p class="description">Convert HYPACK HSX navigation coordinates between the same six NAD83 State Plane options. Soundings and other measurements are unchanged.</p>
+    <label for="hsxDir">Conversion</label>
+    <select id="hsxDir">
+      <option value="NJ>NYLI">NJ 2900 &rarr; NY Long Island 3104</option>
+      <option value="NYLI>NJ">NY Long Island 3104 &rarr; NJ 2900</option>
+      <option value="NJ>NYE">NJ 2900 &rarr; NY East 3101</option>
+      <option value="NYE>NJ">NY East 3101 &rarr; NJ 2900</option>
+      <option value="NYE>NYLI">NY East 3101 &rarr; NY Long Island 3104</option>
+      <option value="NYLI>NYE">NY Long Island 3104 &rarr; NY East 3101</option>
+    </select>
+    <label for="hsxFile">HSX files</label>
+    <input type="file" id="hsxFile" class="file-picker-input" accept=".hsx" multiple>
+    <label for="hsxFile" class="file-picker-label">Choose Files</label>
+    <p id="hsxFileNames" class="file-name">No files selected</p>
+    <label class="check"><input type="checkbox" id="hsxRound"> Round X Y to 2 decimals, Z to 1 decimal</label>
+    <div class="actionRow">
+      <button id="hsxConvertBtn" class="processBtn" disabled>Convert All HSX</button>
+      <button id="hsxDownloadBtn" class="downloadBtn">Download ZIP</button>
+    </div>
+    <div id="hsxStatus"></div>
+  </div>
   </div>
 </div>
 
@@ -329,6 +400,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <script>
 
@@ -342,6 +414,18 @@ function roundHalfUp(v, d) {
 /* ============================================================
    TAB CONTROL
 ============================================================ */
+
+function openConvertSubTab(paneId, button) {
+    const container = document.getElementById("cvTab");
+    container.querySelectorAll(".convert-sub-content").forEach(function(pane) {
+        pane.classList.remove("active");
+    });
+    container.querySelectorAll(".convert-sub-button").forEach(function(btn) {
+        btn.classList.remove("active");
+    });
+    document.getElementById(paneId).classList.add("active");
+    button.classList.add("active");
+}
 
 function openTab(tabId, button) {
 
@@ -3090,7 +3174,7 @@ document.getElementById("zProcessBtn").addEventListener("click", function () {
     reader.onload = function (event) {
 
         const text =
-            event.target.zResult;
+            event.target.result;
 
 
         const lines =
@@ -3323,7 +3407,7 @@ document.getElementById("zDownloadBtn").addEventListener("click", function () {
 
 
     link.download =
-        baseName + "_Z_ADJUSTED.txt";
+        baseName + "_Z_ADJUSTED.xyz";
 
 
     document.body.appendChild(link);
@@ -3581,10 +3665,11 @@ function cvConvertText(text, dir, round) {
 if (typeof document !== "undefined") {
   const $ = id => document.getElementById(id);
   const esc = t => String(t).replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
-  let src = "", srcName = "", result = "";
+  let cvFiles = [];
+  let cvZipBlob = null;
 
   function resetOutput() {
-    result = "";
+    cvZipBlob = null;
     $("cvDownloadBtn").style.display = "none";
     $("cvPreview").innerHTML = "";
     $("cvStatus").innerHTML = "";
@@ -3595,65 +3680,219 @@ if (typeof document !== "undefined") {
   }
 
   $("cvFile").addEventListener("change", e => {
-    const f = e.target.files[0];
-    if (!f) { $("cvConvertBtn").disabled = true; return; }
-    const r = new FileReader();
-    r.onload = () => {
-      src = String(r.result); srcName = f.name; resetOutput();
-      $("cvConvertBtn").disabled = false;
-    };
-    r.onerror = () => { $("cvStatus").innerHTML = '<div class="error">Could not read the file.</div>'; };
-    r.readAsText(f);
+    cvFiles = Array.from(e.target.files || []);
+    resetOutput();
+    $("cvConvertBtn").disabled = !cvFiles.length;
+    $("cvFileNames").textContent = cvFiles.length
+      ? cvFiles.length + " file(s) selected: " + cvFiles.map(f => f.name).join(", ")
+      : "No files selected";
+    $("cvStatus").innerHTML = cvFiles.length
+      ? '<div class="info">Ready to convert ' + cvFiles.length + ' file(s).</div>'
+      : "";
   });
   $("cvDir").addEventListener("change", () => { resetOutput(); note(); });
   $("cvRound").addEventListener("change", resetOutput);
   note();
 
-  $("cvConvertBtn").addEventListener("click", () => {
-    const dir = $("cvDir").value;
-    const [from, to] = dir.split(">");
-    const res = cvConvertText(src, dir, $("cvRound").checked);
-    if (!res.ok) {
-      resetOutput();
-      $("cvStatus").innerHTML = '<div class="error">No valid coordinate rows found.</div>';
+  $("cvConvertBtn").addEventListener("click", async () => {
+    if (!cvFiles.length) return;
+    if (typeof JSZip === "undefined") {
+      $("cvStatus").innerHTML = '<div class="error">ZIP support could not load. Check your internet connection and reload this page.</div>';
       return;
     }
-    result = res.text.replace(/\n*$/, "\n");
-    const skipped = res.bad.length
-      ? " " + res.bad.length + " line(s) skipped (" + res.bad.slice(0, 10).join(", ") + (res.bad.length > 10 ? ", ..." : "") + ")."
-      : "";
-    $("cvStatus").innerHTML = '<div class="success">Converted ' + res.ok + ' point' + (res.ok === 1 ? '' : 's') +
-      ' to ' + ZONES[to].label + '.' + (res.hasId ? ' ID column detected.' : '') + skipped + '</div>';
-    $("cvDownloadBtn").style.display = "inline-block";
-    let h = "<h3>First " + res.rows.length + " converted points</h3><table><tr>" +
-      (res.hasId ? "<th>ID</th>" : "") + "<th>Input X</th><th>Input Y</th><th>Z</th><th>Output X</th><th>Output Y</th></tr>";
-    res.rows.forEach(r => {
-      h += "<tr>" + (res.hasId ? "<td>" + esc(r.id) + "</td>" : "") + "<td>" + r.x.toFixed(2) + "</td><td>" + r.y.toFixed(2) +
-        "</td><td>" + esc(r.z) + "</td><td>" + r.nx.toFixed(2) + "</td><td>" + r.ny.toFixed(2) + "</td></tr>";
-    });
-    $("cvPreview").innerHTML = h + "</table>";
+
+    const btn = $("cvConvertBtn");
+    btn.disabled = true;
+    btn.textContent = "Converting...";
+    resetOutput();
+
+    const zip = new JSZip();
+    let totalPoints = 0;
+    const failures = [];
+    let firstPreview = null;
+    const dir = $("cvDir").value;
+    const to = dir.split(">")[1];
+    const tag = ZONES[to].tag;
+
+    try {
+      for (let i = 0; i < cvFiles.length; i++) {
+        const file = cvFiles[i];
+        $("cvStatus").innerHTML = '<div class="info">Converting ' + (i + 1) + ' of ' + cvFiles.length + ': ' + esc(file.name) + '</div>';
+        try {
+          const source = await file.text();
+          const res = cvConvertText(source, dir, $("cvRound").checked);
+          if (!res.ok) throw new Error("No valid coordinate rows found.");
+          const output = res.text.replace(/\n*$/, "\n");
+          const base = file.name.replace(/\.[^/.]+$/, "");
+          const outName = base + "_" + tag + ".xyz";
+          zip.file(outName, output);
+          totalPoints += res.ok;
+          if (!firstPreview) firstPreview = {res, fileName:file.name};
+        } catch (e) {
+          failures.push(file.name + ": " + (e.message || e));
+        }
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      if (!Object.keys(zip.files).length) {
+        throw new Error("No files could be converted. " + failures.join(" | "));
+      }
+
+      cvZipBlob = await zip.generateAsync({type:"blob"});
+      $("cvDownloadBtn").style.display = "inline-block";
+
+      let msg = "Converted " + Object.keys(zip.files).length + " of " + cvFiles.length +
+        " file(s) to " + ZONES[to].label + ". Total points converted: " + totalPoints.toLocaleString() + ".";
+      if (failures.length) msg += " Files not converted: " + failures.join(" | ");
+      msg += " Download ZIP to save the converted files.";
+      $("cvStatus").innerHTML = '<div class="success">' + esc(msg) + '</div>';
+
+      if (firstPreview) {
+        const res = firstPreview.res;
+        let h = "<h3>Preview: " + esc(firstPreview.fileName) + " — first " + res.rows.length + " converted points</h3><table><tr>" +
+          (res.hasId ? "<th>ID</th>" : "") + "<th>Input X</th><th>Input Y</th><th>Z</th><th>Output X</th><th>Output Y</th></tr>";
+        res.rows.forEach(r => {
+          h += "<tr>" + (res.hasId ? "<td>" + esc(r.id) + "</td>" : "") + "<td>" + r.x.toFixed(2) + "</td><td>" + r.y.toFixed(2) +
+            "</td><td>" + esc(r.z) + "</td><td>" + r.nx.toFixed(2) + "</td><td>" + r.ny.toFixed(2) + "</td></tr>";
+        });
+        $("cvPreview").innerHTML = h + "</table>";
+      }
+    } catch (e) {
+      $("cvStatus").innerHTML = '<div class="error">' + esc(e.message || e) + '</div>';
+    } finally {
+      btn.disabled = !cvFiles.length;
+      btn.textContent = "Convert All";
+    }
   });
 
   $("cvDownloadBtn").addEventListener("click", () => {
-    if (!result) return;
+    if (!cvZipBlob) return;
     const tag = ZONES[$("cvDir").value.split(">")[1]].tag;
-    const name = srcName.replace(/\.[^/.]+$/, "") + "_" + tag + ".xyz";
-    const url = URL.createObjectURL(new Blob([result], {type: "text/plain"}));
+    const url = URL.createObjectURL(cvZipBlob);
     const a = document.createElement("a");
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    a.href = url;
+    a.download = "Converted_Grid_" + tag + ".zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
   });
 
   /* Clear All button */
   const clr = $("clearAllBtn");
   if (clr) clr.addEventListener("click", () => {
-    $("cvFile").value = ""; src = ""; srcName = "";
+    $("cvFile").value = "";
+    cvFiles = [];
+    $("cvFileNames").textContent = "No files selected";
     $("cvConvertBtn").disabled = true;
-    $("cvDir").selectedIndex = 0; $("cvRound").checked = false;
-    resetOutput(); note();
+    $("cvConvertBtn").textContent = "Convert All";
+    $("cvDir").selectedIndex = 0;
+    $("cvRound").checked = false;
+    resetOutput();
+    note();
   });
 }
+
+/* ============================================================
+   CONVERT HYPACK RAW / HSX NAVIGATION COORDINATES
+   Converts POS X/Y and RAW FIX X/Y records, then updates the
+   projection metadata to match the destination zone.
+============================================================ */
+(function(){
+  const zoneMeta = {
+    NJ: {pro:'PRO TM -74.500000 0.999900 38.833333 0.000000 0.000000 492125.0000 0.0000', central:'-74.5000000000', epsg:'3424', fe:'492125', north:'0.0000000000', projection:'TM', ref:'38.8333333333', scale:'0.9999000000', south:'0.0000000000', zoneId:'0', zoneName:'NJ-2900 NEW JERSEY'},
+    NYE:{pro:'PRO TM -74.500000 0.999900 38.833333 0.000000 0.000000 492125.0000 0.0000', central:'-74.5000000000', epsg:'2260', fe:'492125', north:'0.0000000000', projection:'TM', ref:'38.8333333333', scale:'0.9999000000', south:'0.0000000000', zoneId:'1210', zoneName:'NY-3101 NEW YORK EAST'},
+    NYLI:{pro:'PRO LCC -74.000000 1.000000 40.166667 41.033333 40.666667 984250.0000 0.0000', central:'-74.0000000000', epsg:'2263', fe:'984250', north:'41.0333333333', projection:'LCC', ref:'40.1666666667', scale:'1.0000000000', south:'40.6666666667', zoneId:'1220', zoneName:'NY-3104 NEW YORK LONG ISLAND'}
+  };
+  function updateRawMetadata(lines, dest){
+    const m=zoneMeta[dest];
+    return lines.map(line=>{
+      if(/^PRO\s/.test(line)) return m.pro;
+      if(!/^INI\s/.test(line)) return line;
+      const k=line.match(/^INI\s+([^=]+)=/); if(!k) return line;
+      const key=k[1].trim();
+      const values={CentralMeridian:m.central,EPSG:m.epsg,FalseEasting:m.fe,FalseNorthing:'0',NorthParallel:m.north,Projection:m.projection,RefLatitude:m.ref,ScaleFactor:m.scale,SouthParallel:m.south,UnitsName:'US Survey Foot',ZoneId:m.zoneId,ZoneName:m.zoneName};
+      return Object.prototype.hasOwnProperty.call(values,key) ? 'INI '+key+'='+values[key] : line;
+    });
+  }
+  function convertHypackText(text, dir, kind, round){
+    const [from,to]=dir.split('>');
+    const lines=text.split(/\r?\n/); let converted=0, posCount=0, fixCount=0;
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!line) continue;
+      const match=line.match(/^(POS|FIX)\s+/);
+      if(!match) continue;
+      const type=match[1];
+      const parts=line.trim().split(/\s+/);
+      let xi=-1, yi=-1;
+      if(type==='POS' && parts.length>=5){xi=3; yi=4; posCount++;}
+      else if(type==='FIX' && kind==='raw' && parts.length>=6){xi=4; yi=5; fixCount++;}
+      if(xi<0 || !isNum(parts[xi]) || !isNum(parts[yi])) continue;
+      const x=Number(parts[xi]), y=Number(parts[yi]);
+      const [nx,ny]=convertXY(from,to,x,y);
+      parts[xi]=round?cvRoundHalfUp(nx,2):nx.toFixed(3);
+      parts[yi]=round?cvRoundHalfUp(ny,2):ny.toFixed(3);
+      lines[i]=parts.join(' '); converted++;
+    }
+    const updated=updateRawMetadata(lines,to);
+    if(!converted) throw new Error('No supported POS navigation coordinates were found in this file.');
+    return {text:updated.join('\r\n'),converted,posCount,fixCount};
+  }
+  function wire(kind){
+    const cap=kind.toUpperCase(), fileEl=document.getElementById(kind+'File'), dirEl=document.getElementById(kind+'Dir'), roundEl=document.getElementById(kind+'Round'), convertBtn=document.getElementById(kind+'ConvertBtn'), downloadBtn=document.getElementById(kind+'DownloadBtn'), status=document.getElementById(kind+'Status'), namesEl=document.getElementById(kind+'FileNames');
+    let selectedFiles=[], zipBlob=null;
+    fileEl.addEventListener('change',()=>{
+      selectedFiles=Array.from(fileEl.files||[]); zipBlob=null; downloadBtn.style.display='none'; status.innerHTML='';
+      convertBtn.disabled=!selectedFiles.length;
+      namesEl.textContent=selectedFiles.length ? selectedFiles.length+' file(s) selected: '+selectedFiles.map(f=>f.name).join(', ') : 'No files selected';
+      if(selectedFiles.length) status.innerHTML='<div class="info">Ready to convert '+selectedFiles.length+' '+cap+' file(s).</div>';
+    });
+    convertBtn.addEventListener('click',async()=>{
+      if(!selectedFiles.length) return;
+      if(typeof JSZip==='undefined'){
+        status.innerHTML='<div class="error">ZIP support could not load. Check your internet connection and reload this page.</div>';
+        return;
+      }
+      convertBtn.disabled=true; convertBtn.textContent='Converting...'; downloadBtn.style.display='none'; zipBlob=null;
+      const zip=new JSZip(); let totalConverted=0, totalPos=0, totalFix=0, failed=[];
+      try{
+        const [from,to]=dirEl.value.split('>');
+        for(let i=0;i<selectedFiles.length;i++){
+          const file=selectedFiles[i];
+          status.innerHTML='<div class="info">Converting '+(i+1)+' of '+selectedFiles.length+': '+file.name+'</div>';
+          try{
+            const source=await file.text();
+            const res=convertHypackText(source,dirEl.value,kind,roundEl.checked);
+            const ext=kind==='raw'?'.RAW':'.HSX';
+            const tag=ZONES[to].tag;
+            const outName=file.name.replace(/\.[^/.]+$/,'')+'_'+tag+ext;
+            zip.file(outName,res.text);
+            totalConverted+=res.converted; totalPos+=res.posCount; totalFix+=res.fixCount;
+          }catch(e){failed.push(file.name+': '+(e.message||e));}
+          await new Promise(resolve=>setTimeout(resolve,0));
+        }
+        if(!Object.keys(zip.files).length) throw new Error('No files could be converted. '+failed.join(' | '));
+        zipBlob=await zip.generateAsync({type:'blob'});
+        downloadBtn.style.display='inline-block';
+        let msg='Converted '+Object.keys(zip.files).length+' of '+selectedFiles.length+' '+cap+' file(s). Total navigation records converted: '+totalConverted.toLocaleString()+'.';
+        if(kind==='raw') msg+=' POS records: '+totalPos.toLocaleString()+'; FIX records: '+totalFix.toLocaleString()+'.';
+        if(failed.length) msg+=' Failed files: '+failed.join(' | ');
+        status.innerHTML='<div class="success">'+msg+' Download ZIP to save all converted files together.</div>';
+      }catch(e){status.innerHTML='<div class="error">'+String(e.message||e).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</div>';}
+      finally{convertBtn.disabled=!selectedFiles.length;convertBtn.textContent='Convert All '+cap;}
+    });
+    downloadBtn.addEventListener('click',()=>{
+      if(!zipBlob)return;
+      const tag=ZONES[dirEl.value.split('>')[1]].tag;
+      const url=URL.createObjectURL(zipBlob); const a=document.createElement('a');
+      a.href=url; a.download='Converted_'+cap+'_'+tag+'.zip'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+    });
+    dirEl.addEventListener('change',()=>{zipBlob=null;downloadBtn.style.display='none';status.innerHTML='';});
+    roundEl.addEventListener('change',()=>{zipBlob=null;downloadBtn.style.display='none';status.innerHTML='';});
+  }
+  wire('raw'); wire('hsx');
+})();
 
 window.GridCore = {convertXY, ZONES, cvConvertText};
 })();
