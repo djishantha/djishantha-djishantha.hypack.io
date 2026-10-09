@@ -3,25 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FREE HYPACK CAD Tools</title>
+<title>FREE HYDRO-CAD Tools</title>
 <style>
 :root{--ink:#0b4f7a;--sea:#0a6ea5;--sea-d:#085888;--paper:#eef6fb;--line:#cfe1ec;--mut:#546e80;
       --ok:#0a6b43;--okbg:#e6f5ec;--bad:#a32017;--badbg:#fdeceb;--tint:#e1f1fa}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:#14303f;font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
-.wrap{max-width:760px;margin:0 auto}
-.top{position:relative;width:min(720px,calc(100% - 40px));margin:0 auto;background:linear-gradient(180deg,#3fa6df 0%,#8fd2f1 60%,#cfeefb 100%);overflow:hidden}
+.wrap{max-width:1100px;margin:0 auto}
+.top{position:relative;width:min(1060px,calc(100% - 40px));margin:0 auto;background:linear-gradient(180deg,#3fa6df 0%,#8fd2f1 60%,#cfeefb 100%);overflow:hidden}
 .top .sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .top .wrap{position:relative;padding:26px 20px 6px}
 h1{margin:0;font-size:1.75rem;font-weight:800;color:#06385a;letter-spacing:.3px}
 .surf{position:relative;display:block;width:100%;height:46px;margin-bottom:-1px}
 .sea{position:relative;background:#0a6ea5}
 .sea .wrap{padding:0 20px}
-.tabs{display:flex;gap:4px;overflow-x:auto;padding-top:2px}
-.tab-button{flex:0 0 auto;margin:0;padding:11px 18px;border:0;border-radius:8px 8px 0 0;background:transparent;color:#dff2fb;font:600 15px/1.2 inherit;cursor:pointer}
+.tabs{display:flex;gap:8px;overflow-x:hidden;flex-wrap:wrap;padding-top:4px;padding-bottom:4px;align-items:flex-end}
+.tab-button{flex:1 1 auto;margin:0;padding:11px 18px;border:0;border-radius:8px 8px 0 0;background:transparent;color:#dff2fb;font:600 15px/1.2 inherit;cursor:pointer}
 .tab-button:hover{color:#fff;background:rgba(255,255,255,.12)}
 .tab-button.active{background:var(--paper);color:var(--ink)}
-main{max-width:760px;margin:0 auto;padding:22px 20px 48px}
+main{max-width:1100px;margin:0 auto;padding:22px 20px 48px}
 .tab-content{display:none}
 .tab-content.active{display:block}
 .section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px;margin-bottom:16px}
@@ -65,6 +65,32 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .footer{display:flex;justify-content:flex-end;margin-top:4px}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
 @media(max-width:560px){.tab-button{padding:10px 12px;font-size:14px}.section{padding:16px}}
+
+    .combine-file-row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 12px;
+      align-items: flex-end;
+    }
+    .combine-file-item {
+      flex: 1;
+      min-width: 0;
+    }
+    .combine-file-item label {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .combine-file-item input[type="file"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    @media (max-width: 700px) {
+      .combine-file-row {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+      }
+    }
 </style>
 </head>
 <body>
@@ -77,7 +103,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     </g>
     <circle cx="690" cy="26" r="16" fill="#fff6c9" opacity=".9"/>
   </svg>
-  <div class="wrap"><h1>FREE HYPACK CAD Tools</h1></div>
+  <div class="wrap"><h1>FREE HYDRO-CAD Tools</h1></div>
   <svg class="surf" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
     <path d="M0 22 C120 6 240 6 360 22 S600 38 720 22 S960 6 1080 22 S1320 38 1440 22 V46 H0 Z" fill="#5db9e6" opacity=".75"/>
     <path d="M0 30 C140 14 260 14 400 30 S640 46 780 30 S1020 14 1160 30 S1340 42 1440 30 V46 H0 Z" fill="#0a6ea5"/>
@@ -86,6 +112,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     <nav class="tabs">
       <button class="tab-button active" onclick="openTab('vdatumTab', this)">VDATUM</button>
       <button class="tab-button" onclick="openTab('zAdjustTab', this)">Z Adjust</button>
+      <button class="tab-button" onclick="openTab('combineXYZTab', this)">Combine XYZ</button>
       <button class="tab-button" onclick="openTab('cvTab', this)">Convert Grid</button>
       <button class="tab-button" onclick="openTab('ciTab', this)">Convert Image</button>
       <button class="tab-button" onclick="openTab('mtxChnTab', this)">Extract XYZ</button>
@@ -99,10 +126,10 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
   <div class="section">
     <h2>VDATUM Z Adjustment</h2>
     <p class="description">Matches each survey point to the nearest VDATUM point.</p>
-    <label for="vdatumFile">VDATUM MLLW XYZ file</label>
+    <label for="vdatumFile">VDATUM MLLW XYZ file in Elevation</label>
     <input type="file" id="vdatumFile" accept=".xyz,.txt">
     <div id="vdatumName" class="file-name">No VDATUM file selected</div>
-    <label for="surveyFile">Survey XYZ file</label>
+    <label for="surveyFile">Survey XYZ file in Depth</label>
     <input type="file" id="surveyFile" accept=".xyz,.txt">
     <div id="surveyName" class="file-name">No survey file selected</div>
     <label class="check"><input type="checkbox" id="vdatumRound"> Round X Y to 2 decimals, Z to 1 decimal</label>
@@ -128,7 +155,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
   <div class="section">
     <h2>Z Adjust / Invert</h2>
     <p class="description">Shift, invert and round Z values.</p>
-    <label for="zAdjustFile">XYZ / TXT file</label>
+    <label for="zAdjustFile">XYZ/TXT file in Depth</label>
     <input type="file" id="zAdjustFile" accept=".txt,.xyz">
     <label for="zAdjustment">Z adjustment</label>
     <input type="number" id="zAdjustment" value="0" step="0.01" placeholder="1.5 or -2.2">
@@ -141,6 +168,63 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     </div>
     <div id="zStatus"></div>
     <div id="zResult" class="result"></div>
+  </div>
+</div>
+
+<div id="combineXYZTab" class="tab-content">
+  <div class="section">
+    <h2>Combine XYZ</h2>
+    <p class="description">Choose up to 6 XYZ files. They are combined in order File 1 &rarr; File 6.</p>
+
+    <div class="combine-file-row">
+      <div class="combine-file-item">
+        
+        <input type="file" id="combineFile1" accept=".xyz,.txt,.csv,.pts,.dat">
+      </div>
+      <div class="combine-file-item">
+        
+        <input type="file" id="combineFile4" accept=".xyz,.txt,.csv,.pts,.dat">
+      </div>
+    </div>
+
+    <div class="combine-file-row">
+      <div class="combine-file-item">
+        
+        <input type="file" id="combineFile2" accept=".xyz,.txt,.csv,.pts,.dat">
+      </div>
+      <div class="combine-file-item">
+        
+        <input type="file" id="combineFile5" accept=".xyz,.txt,.csv,.pts,.dat">
+      </div>
+    </div>
+
+    <div class="combine-file-row">
+      <div class="combine-file-item">
+        
+        <input type="file" id="combineFile3" accept=".xyz,.txt,.csv,.pts,.dat">
+      </div>
+      <div class="combine-file-item">
+        
+        <input type="file" id="combineFile6" accept=".xyz,.txt,.csv,.pts,.dat">
+      </div>
+    </div>
+
+    <label class="check"><input type="checkbox" id="combineRemoveOverlap"> Remove overlap points</label>
+    <p class="hint">When selected, overlapping points are removed from the later file. File 2 is checked against File 1, File 3 against File 2, etc. Overlap: XY within 3 ft and Z within 0.15 ft.</p>
+
+    <label for="combineZAdjustment">Z adjustment</label>
+    <input type="number" id="combineZAdjustment" value="0" step="0.01" placeholder="1.5 or -2.2">
+    <p class="hint">Positive adds, negative subtracts.</p>
+    <label class="check"><input type="checkbox" id="combineInvertZ"> Invert Z values</label>
+    <label class="check"><input type="checkbox" id="combineRound" checked> Round XY to 2 decimals, Z to 1 decimal</label>
+
+    <div class="actionRow">
+      <button id="combineProcessBtn" class="processBtn">Process</button>
+      <button id="combineDownloadBtn" class="downloadBtn">Download XYZ</button>
+      <button id="combineClearBtn" class="clearBtn">Clear</button>
+    </div>
+
+    <div id="combineStatus"></div>
   </div>
 </div>
 
@@ -174,7 +258,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 <div id="ciTab" class="tab-content">
   <div class="section">
     <h2>Convert Image</h2>
-    <p class="description">Re-georeference a TIFF and its TFW to another State Plane zone. NAD83, US survey feet.</p>
+    <p class="description">Re-georeference a TIFF using embedded GeoTIFF georeferencing or an optional TFW. NAD83, US survey feet.</p>
     <label for="ciDir">Conversion</label>
     <select id="ciDir">
       <option value="NYLI>NJ">NY Long Island 3104 &rarr; NJ 2900</option>
@@ -186,17 +270,20 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
     </select>
     <label for="ciImg">Image (TIF)</label>
     <input type="file" id="ciImg" accept=".tif,.tiff">
-    <label for="ciTfw">World file (TFW)</label>
+    <label for="ciTfw">World file (TFW) — optional</label>
     <input type="file" id="ciTfw" accept=".tfw,.wld,.txt">
+    <p class="hint">If the TIFF contains embedded GeoTIFF georeferencing, no TFW is required. The embedded CRS is detected automatically.</p>
     <label for="ciMode">Output</label>
     <select id="ciMode">
-      <option value="rot">Rotated TFW (image unchanged)</option>
+      <option value="rot">Rotated TFW + NEW TIFF</option>
       <option value="north">North-up image + TFW (resampled)</option>
+      <option value="geotiff">GeoTIFF (embedded georeferencing, no TFW)</option>
     </select>
     <div class="actionRow">
       <button id="ciConvertBtn" class="processBtn" disabled>Convert</button>
       <button id="ciDlTfw" class="downloadBtn">Download TFW</button>
       <button id="ciDlTif" class="downloadBtn">Download TIF</button>
+      <button id="ciDlGeo" class="downloadBtn">Download GeoTIFF</button>
     </div>
     <progress id="ciProgress" value="0" max="100"></progress>
     <div id="ciStatus"></div>
@@ -206,33 +293,35 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 
 <div id="mtxChnTab" class="tab-content">
   <div class="section">
-    <h2>MTX &rarr; Four Corner XYZ</h2>
-    <p class="description">Outside corners of an MTX grid.</p>
-    <label for="mtxFile">MTX file</label>
-    <input type="file" id="mtxFile" accept=".mtx,.txt">
-    <label for="mtxZ">Corner Z</label>
-    <input type="number" id="mtxZ" value="0" step="0.1">
-    <div class="actionRow">
-      <button id="mtxProcessBtn" class="processBtn">Process</button>
-      <button id="mtxDownloadBtn" class="downloadBtn">Download XYZ</button>
-      <button id="mtxClearBtn" class="clearBtn">Clear</button>
-    </div>
-    <div id="mtxStatus"></div>
-    <div id="mtxResult" class="result"></div>
-  </div>
+    <h2>Extract XYZ</h2>
+    <p class="description">Choose an extraction type: MTX corners, CHN nodes, channel DXF nodes, contour DXF vertices, or HYPACK sounding DXF points.</p>
 
-  <div class="section">
-    <h2>CHN &rarr; XYZ Nodes</h2>
-    <p class="description">Channel nodes as X Y Z.</p>
-    <label for="chnFile">CHN file</label>
-    <input type="file" id="chnFile" accept=".chn,.txt">
-    <div class="actionRow">
-      <button id="chnProcessBtn" class="processBtn">Process</button>
-      <button id="chnDownloadBtn" class="downloadBtn">Download XYZ</button>
-      <button id="chnClearBtn" class="clearBtn">Clear</button>
+    <label for="extractType">Extraction</label>
+    <select id="extractType">
+      <option value="mtx">MTX &rarr; Four Corner XYZ</option>
+      <option value="chn">CHN &rarr; XYZ Nodes</option>
+      <option value="dxf">DXF chn---&gt;XYZ nodes</option>
+      <option value="contourDxf">Contour DXF ---&gt;XYZ Points</option>
+      <option value="soundingDxf">Sounding DXF ---&gt;XYZ Points</option>
+    </select>
+
+    <div id="mtxZRow">
+      <label for="extractMtxZ">Corner Z</label>
+      <input type="number" id="extractMtxZ" value="0" step="0.1">
     </div>
-    <div id="chnStatus"></div>
-    <div id="chnResult" class="result"></div>
+
+    <label for="extractFile">File</label>
+    <input type="file" id="extractFile" accept=".mtx,.txt">
+    <div id="extractFileName" class="file-name">No file selected</div>
+
+    <div class="actionRow">
+      <button id="extractProcessBtn" class="processBtn" disabled>Process</button>
+      <button id="extractDownloadBtn" class="downloadBtn">Download XYZ</button>
+      <button id="extractClearBtn" class="clearBtn">Clear</button>
+    </div>
+
+    <div id="extractStatus"></div>
+    <div id="extractResult" class="result"></div>
   </div>
 </div>
 
@@ -240,6 +329,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <script>
 
 function roundHalfUp(v, d) {
@@ -290,233 +380,190 @@ let chnOriginalFileName = "";
 
 
 /* ============================================================
-   MTX PROCESS
+   EXTRACT XYZ - SIMPLE UNIFIED TOOL
 ============================================================ */
 
-document
-.getElementById("mtxProcessBtn")
-.addEventListener("click", function() {
+let extractOutputText = "";
+let extractOriginalFileName = "";
 
+const extractType = document.getElementById("extractType");
+const extractFile = document.getElementById("extractFile");
+const extractProcessBtn = document.getElementById("extractProcessBtn");
+const extractDownloadBtn = document.getElementById("extractDownloadBtn");
+const extractClearBtn = document.getElementById("extractClearBtn");
+const extractStatus = document.getElementById("extractStatus");
+const extractResult = document.getElementById("extractResult");
+const extractFileName = document.getElementById("extractFileName");
+const mtxZRow = document.getElementById("mtxZRow");
+const extractMtxZ = document.getElementById("extractMtxZ");
 
-    const fileInput =
-        document.getElementById("mtxFile");
-
-
-    const zInput =
-        document.getElementById("mtxZ");
-
-
-    const status =
-        document.getElementById("mtxStatus");
-
-
-    const result =
-        document.getElementById("mtxResult");
-
-
-    const downloadBtn =
-        document.getElementById("mtxDownloadBtn");
-
-
-    if (!fileInput.files.length) {
-
-        alert("Please select an MTX file.");
-
-        return;
-
+function updateExtractFileType(){
+    const type = extractType.value;
+    if(type === "mtx") {
+        extractFile.accept = ".mtx,.txt";
+        mtxZRow.style.display = "block";
+    } else if(type === "chn") {
+        extractFile.accept = ".chn,.txt";
+        mtxZRow.style.display = "none";
+    } else {
+        extractFile.accept = ".dxf";
+        mtxZRow.style.display = "none";
     }
+    extractFile.value = "";
+    extractFileName.textContent = "No file selected";
+    extractProcessBtn.disabled = true;
+    extractDownloadBtn.style.display = "none";
+    extractStatus.innerHTML = "";
+    extractResult.textContent = "";
+    extractOutputText = "";
+    extractOriginalFileName = "";
+}
 
+extractType.addEventListener("change", updateExtractFileType);
 
-    const zValue =
-        Number(zInput.value);
-
-
-    if (!Number.isFinite(zValue)) {
-
-        alert("Please enter a valid Z value.");
-
-        return;
-
+extractFile.addEventListener("change", function(){
+    if(this.files.length){
+        extractFileName.textContent = this.files[0].name;
+        extractProcessBtn.disabled = false;
+    } else {
+        extractFileName.textContent = "No file selected";
+        extractProcessBtn.disabled = true;
     }
-
-
-    const file =
-        fileInput.files[0];
-
-
-    mtxOriginalFileName =
-        file.name;
-
-
-    const reader =
-        new FileReader();
-
-
-    reader.onload =
-        function(event) {
-
-
-            const text =
-                event.target.result;
-
-
-            const values =
-                extractMTXValues(text);
-
-
-            if (values.length < 7) {
-
-                status.innerHTML =
-                    "<div class='error'>" +
-
-                    "<strong>Error:</strong><br>" +
-
-                    "Could not find the required " +
-                    "7 MTX values.<br>" +
-
-                    "Values found: " +
-                    values.length +
-
-                    "</div>";
-
-                downloadBtn.style.display =
-                    "none";
-
-                return;
-
-            }
-
-
-            /*
-             * MTX structure
-             *
-             * 0 = X
-             * 1 = Y
-             * 2 = Width
-             * 3 = First Leg / Length
-             * 4 = Grid X
-             * 5 = Grid Y
-             * 6 = Bearing
-             */
-
-
-            const x0 =
-                values[0];
-
-            const y0 =
-                values[1];
-
-            const width =
-                values[2];
-
-            const length =
-                values[3];
-
-            const bearingDeg =
-                values[6];
-
-
-            /*
-             * Calculate four corners.
-             */
-
-            const corners =
-                calculateCorners(
-                    x0,
-                    y0,
-                    width,
-                    length,
-                    bearingDeg,
-                    zValue
-                );
-
-
-            /*
-             * Create XYZ output.
-             */
-
-            mtxOutputText =
-                corners
-                .map(function(point) {
-
-                    return (
-                        point.x.toFixed(3) +
-                        " " +
-                        point.y.toFixed(3) +
-                        " " +
-                        point.z.toFixed(1)
-                    );
-
-                })
-                .join("\n");
-
-
-            /*
-             * Status.
-             */
-
-            status.innerHTML =
-                "<div class='success'>" +
-
-                "<strong>MTX processing complete.</strong>" +
-
-                "<br><br>" +
-
-                "X: " +
-                x0 +
-
-                "<br>" +
-
-                "Y: " +
-                y0 +
-
-                "<br>" +
-
-                "Width: " +
-                width +
-
-                "<br>" +
-
-                "First Leg: " +
-                length +
-
-                "<br>" +
-
-                "Bearing from North: " +
-                bearingDeg +
-                "°" +
-
-                "<br>" +
-
-                "Z: " +
-                zValue +
-
-                "</div>";
-
-
-            /*
-             * Preview.
-             */
-
-            result.textContent =
-                mtxOutputText;
-
-
-            /*
-             * Show download.
-             */
-
-            downloadBtn.style.display =
-                "inline-block";
-
-        };
-
-
-    reader.readAsText(file);
-
+    extractDownloadBtn.style.display = "none";
+    extractStatus.innerHTML = "";
+    extractResult.textContent = "";
+    extractOutputText = "";
 });
 
+extractProcessBtn.addEventListener("click", async function(){
+    if(!extractFile.files.length){
+        alert("Please select a file.");
+        return;
+    }
 
+    const type = extractType.value;
+    const file = extractFile.files[0];
+    extractOriginalFileName = file.name;
+    extractOutputText = "";
+    extractDownloadBtn.style.display = "none";
+    extractResult.textContent = "";
+    extractStatus.innerHTML = "<div class='info'>Processing...</div>";
+
+    try {
+        if(type === "mtx") {
+            const z = Number(extractMtxZ.value);
+            if(!Number.isFinite(z)) throw new Error("Please enter a valid Corner Z value.");
+
+            const text = await file.text();
+            const values = extractMTXValues(text);
+            if(values.length < 7) throw new Error("Could not find the required 7 MTX values. Values found: " + values.length);
+
+            const corners = calculateCorners(values[0], values[1], values[2], values[3], values[6], z);
+            extractOutputText = corners.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(1);
+            }).join("\n")+"\n";
+
+            extractResult.textContent = extractOutputText;
+            extractStatus.innerHTML = "<div class='success'><strong>MTX processing complete.</strong><br><br>4 corner XYZ points created.</div>";
+        }
+        else if(type === "chn") {
+            const text = await file.text();
+            const points = extractCHNNodes(text);
+            if(!points.length) throw new Error("No CHN nodes were found.");
+
+            extractOutputText = points.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n")+"\n";
+
+            extractResult.textContent = points.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (points.length>20 ? "\n\n... "+(points.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>CHN processing complete.</strong><br><br>Nodes extracted: "+points.length.toLocaleString()+"</div>";
+        }
+        else if(type === "dxf") {
+            const text = await file.text();
+            const nodes = processDXFText(text);
+            if(!nodes.length) throw new Error("No channel XYZ nodes were found in the DXF file.");
+
+            extractOutputText = nodes.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n")+"\n";
+
+            extractResult.textContent = nodes.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (nodes.length>20 ? "\n\n... "+(nodes.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>DXF channel-node processing complete.</strong><br><br>Final unique channel nodes: "+nodes.length.toLocaleString()+"</div>";
+        }
+        else if(type === "contourDxf") {
+            const text = await file.text();
+            const nodes = processContourDXFText(text);
+            if(!nodes.length) throw new Error("No contour vertices were found. Check that the DXF contains standard contour geometry.");
+
+            extractOutputText = nodes.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\r\n")+"\r\n";
+
+            extractResult.textContent = nodes.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (nodes.length>20 ? "\n\n... "+(nodes.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>Contour DXF processing complete.</strong><br><br>Unique contour XYZ points: "+nodes.length.toLocaleString()+"</div>";
+        }
+        else if(type === "soundingDxf") {
+            const text = await file.text();
+            const result = processSoundingDXFText(text);
+            const nodes = result.points;
+            if(!nodes.length) throw new Error("No sounding XYZ points were found. This workflow expects HYPACK sounding DXF XDATA or supported point entities.");
+
+            extractOutputText = nodes.map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\r\n")+"\r\n";
+
+            extractResult.textContent = nodes.slice(0,20).map(function(p){
+                return p.x.toFixed(3)+" "+p.y.toFixed(3)+" "+p.z.toFixed(3);
+            }).join("\n") + (nodes.length>20 ? "\n\n... "+(nodes.length-20).toLocaleString()+" more points ..." : "");
+            extractStatus.innerHTML = "<div class='success'><strong>Sounding DXF processing complete.</strong><br><br>Unique XYZ points: "+nodes.length.toLocaleString()+"<br>Using HYPACK sounding positions: "+result.hypack.toLocaleString()+"<br>Fallback TEXT positions: "+result.fallback.toLocaleString()+"</div>";
+        }
+
+        extractDownloadBtn.style.display = "inline-block";
+    } catch(e) {
+        console.error(e);
+        extractStatus.innerHTML = "<div class='error'><strong>Error:</strong><br>" + String(e.message || e).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}) + "</div>";
+    }
+});
+
+extractDownloadBtn.addEventListener("click", function(){
+    if(!extractOutputText){
+        alert("Please process a file first.");
+        return;
+    }
+    const type = extractType.value;
+    const base = extractOriginalFileName.replace(/\.[^/.]+$/, "");
+    const suffix = type === "mtx" ? "_four_corners.xyz"
+        : type === "contourDxf" ? "_contour_points.xyz"
+        : type === "soundingDxf" ? "_sounding_points.xyz"
+        : "_nodes.xyz";
+    const url = URL.createObjectURL(new Blob([extractOutputText], {type:"text/plain;charset=utf-8"}));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = base + suffix;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+});
+
+extractClearBtn.addEventListener("click", function(){
+    extractFile.value = "";
+    extractFileName.textContent = "No file selected";
+    extractStatus.innerHTML = "";
+    extractResult.textContent = "";
+    extractDownloadBtn.style.display = "none";
+    extractProcessBtn.disabled = true;
+    extractOutputText = "";
+    extractOriginalFileName = "";
+});
+
+updateExtractFileType();
 
 /* ============================================================
    EXTRACT MTX VALUES
@@ -747,294 +794,6 @@ function calculateCorners(
 
 
 /* ============================================================
-   MTX DOWNLOAD
-============================================================ */
-
-document
-.getElementById("mtxDownloadBtn")
-.addEventListener("click", function() {
-
-
-    if (!mtxOutputText) {
-
-        alert(
-            "Please process an MTX file first."
-        );
-
-        return;
-
-    }
-
-
-    const blob =
-        new Blob(
-            [mtxOutputText],
-            {
-                type:
-                    "text/plain;charset=utf-8"
-            }
-        );
-
-
-    const url =
-        URL.createObjectURL(blob);
-
-
-    const link =
-        document.createElement("a");
-
-
-    link.href =
-        url;
-
-
-    const baseName =
-        mtxOriginalFileName
-        .replace(
-            /\.[^/.]+$/,
-            ""
-        );
-
-
-    link.download =
-        baseName +
-        "_four_corners.xyz";
-
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-
-
-    URL.revokeObjectURL(url);
-
-});
-
-
-
-/* ============================================================
-   MTX CLEAR
-============================================================ */
-
-document
-.getElementById("mtxClearBtn")
-.addEventListener("click", function() {
-
-
-    document.getElementById(
-        "mtxFile"
-    ).value = "";
-
-
-    document.getElementById(
-        "mtxZ"
-    ).value = "0";
-
-
-    document.getElementById(
-        "mtxStatus"
-    ).innerHTML = "";
-
-
-    document.getElementById(
-        "mtxResult"
-    ).textContent = "";
-
-
-    document.getElementById(
-        "mtxDownloadBtn"
-    ).style.display = "none";
-
-
-    mtxOutputText = "";
-
-    mtxOriginalFileName = "";
-
-});
-
-
-
-/* ============================================================
-   CHN PROCESS
-============================================================ */
-
-document
-.getElementById("chnProcessBtn")
-.addEventListener("click", function() {
-
-
-    const fileInput =
-        document.getElementById("chnFile");
-
-
-    const status =
-        document.getElementById("chnStatus");
-
-
-    const result =
-        document.getElementById("chnResult");
-
-
-    const downloadBtn =
-        document.getElementById(
-            "chnDownloadBtn"
-        );
-
-
-    if (!fileInput.files.length) {
-
-        alert("Please select a CHN file.");
-
-        return;
-
-    }
-
-
-    const file =
-        fileInput.files[0];
-
-
-    chnOriginalFileName =
-        file.name;
-
-
-    const reader =
-        new FileReader();
-
-
-    reader.onload =
-        function(event) {
-
-
-            const text =
-                event.target.result;
-
-
-            const points =
-                extractCHNNodes(text);
-
-
-            if (
-                points.length === 0
-            ) {
-
-                status.innerHTML =
-                    "<div class='error'>" +
-
-                    "<strong>Error:</strong><br>" +
-
-                    "No CHN nodes were found." +
-
-                    "<br><br>" +
-
-                    "The CHN file structure may be different " +
-                    "from the expected HYPACK node format." +
-
-                    "</div>";
-
-
-                result.textContent = "";
-
-                downloadBtn.style.display =
-                    "none";
-
-                return;
-
-            }
-
-
-            /*
-             * Create XYZ output.
-             */
-
-            chnOutputText =
-                points
-                .map(function(point) {
-
-                    return (
-                        point.x.toFixed(3) +
-                        " " +
-                        point.y.toFixed(3) +
-                        " " +
-                        point.z.toFixed(3)
-                    );
-
-                })
-                .join("\n");
-
-
-            /*
-             * Status.
-             */
-
-            status.innerHTML =
-                "<div class='success'>" +
-
-                "<strong>CHN processing complete.</strong>" +
-
-                "<br><br>" +
-
-                "Nodes extracted: " +
-
-                points.length.toLocaleString() +
-
-                "</div>";
-
-
-            /*
-             * Preview first 20 nodes.
-             */
-
-            result.textContent =
-                points
-                .slice(0, 20)
-                .map(function(point) {
-
-                    return (
-                        point.x.toFixed(3) +
-                        " " +
-                        point.y.toFixed(3) +
-                        " " +
-                        point.z.toFixed(3)
-                    );
-
-                })
-                .join("\n");
-
-
-            if (
-                points.length > 20
-            ) {
-
-                result.textContent +=
-                    "\n\n... " +
-                    (
-                        points.length - 20
-                    ).toLocaleString() +
-                    " more points ...";
-
-            }
-
-
-            /*
-             * Show download.
-             */
-
-            downloadBtn.style.display =
-                "inline-block";
-
-        };
-
-
-    reader.readAsText(file);
-
-});
-
-
-
-/* ============================================================
    EXTRACT CHN NODES
 ============================================================ */
 
@@ -1205,109 +964,605 @@ function extractCHNNodes(text) {
 
 
 /* ============================================================
-   CHN DOWNLOAD
+   CONTOUR DXF -> XYZ POINTS
+   Extracts all stored vertices from common contour entities.
 ============================================================ */
 
-document
-.getElementById("chnDownloadBtn")
-.addEventListener("click", function() {
+function processContourDXFText(text){
+    const pairs = makePairs(text);
+    const entities = splitEntities(pairs);
+    const points = [];
 
-
-    if (!chnOutputText) {
-
-        alert(
-            "Please process a CHN file first."
-        );
-
-        return;
-
+    function addPoint(x,y,z){
+        if(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)){
+            points.push({x:x,y:y,z:z});
+        }
+    }
+    function num(entity, code, fallback=null){
+        const item = entity.find(p => p.code === code);
+        if(!item) return fallback;
+        const n = Number(item.value);
+        return Number.isFinite(n) ? n : fallback;
     }
 
+    for(let i=0;i<entities.length;i++){
+        const entity = entities[i];
+        const type = getEntityType(entity);
 
-    const blob =
-        new Blob(
-            [chnOutputText],
-            {
-                type:
-                    "text/plain;charset=utf-8"
+        if(type === "POINT"){
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+        } else if(type === "LINE"){
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+            addPoint(num(entity,11),num(entity,21),num(entity,31,0));
+        } else if(type === "LWPOLYLINE"){
+            const elevation = num(entity,38,0);
+            let x = null, y = null;
+            for(const p of entity){
+                if(p.code === 10){
+                    if(x !== null && y !== null) addPoint(x,y,elevation);
+                    x = Number(p.value); y = null;
+                } else if(p.code === 20 && x !== null){
+                    y = Number(p.value);
+                    addPoint(x,y,elevation);
+                    x = null; y = null;
+                }
             }
-        );
+        } else if(type === "POLYLINE"){
+            let j = i + 1;
+            const vertices = [];
+            for(;j<entities.length;j++){
+                const nextType = getEntityType(entities[j]);
+                if(nextType === "VERTEX"){
+                    const v = entities[j];
+                    addPoint(num(v,10),num(v,20),num(v,30,0));
+                    vertices.push(v);
+                } else if(nextType === "SEQEND"){
+                    break;
+                } else {
+                    break;
+                }
+            }
+            i = j;
+        } else if(type === "VERTEX"){
+            // Normally consumed with its parent POLYLINE; standalone records are still usable.
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+        } else if(type === "3DFACE"){
+            for(let k=0;k<4;k++){
+                addPoint(num(entity,10+k),num(entity,20+k),num(entity,30+k,0));
+            }
+        } else if(type === "SPLINE"){
+            // DXF SPLINE control points are stored as repeated 10/20/30 groups.
+            let x=null,y=null,z=0;
+            for(const p of entity){
+                if(p.code===10){
+                    x=Number(p.value); y=null; z=0;
+                } else if(p.code===20 && x!==null){
+                    y=Number(p.value);
+                } else if(p.code===30 && x!==null){
+                    z=Number(p.value);
+                    if(y!==null){addPoint(x,y,z);x=null;y=null;z=0;}
+                }
+            }
+            if(x!==null && y!==null) addPoint(x,y,z);
+        }
+    }
+    return removeDuplicates(points);
+}
 
+/* ============================================================
+   SOUNDING DXF -> XYZ POINTS
+   Prefer HYPACK XDATA sounding positions (1011/1021/1031)
+   over shifted TEXT label insertion positions (10/20/30).
+============================================================ */
 
-    const url =
-        URL.createObjectURL(blob);
+function processSoundingDXFText(text){
+    const pairs = makePairs(text);
+    const entities = splitEntities(pairs);
+    const points = [];
+    let hypack = 0, fallback = 0;
 
+    function num(entity, code, fallbackValue=null){
+        const item = entity.find(p => p.code === code);
+        if(!item) return fallbackValue;
+        const n = Number(item.value);
+        return Number.isFinite(n) ? n : fallbackValue;
+    }
+    function addPoint(x,y,z){
+        if(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)){
+            points.push({x:x,y:y,z:z});
+        }
+    }
 
-    const link =
-        document.createElement("a");
+    for(const entity of entities){
+        const type = getEntityType(entity);
+        if(type === "TEXT" || type === "MTEXT"){
+            const hx = num(entity,1011);
+            const hy = num(entity,1021);
+            let hz = num(entity,1031);
+            if(hx !== null && hy !== null){
+                if(hz === null) hz = num(entity,30,0);
+                addPoint(hx,hy,hz);
+                hypack++;
+            } else {
+                const x = num(entity,10), y = num(entity,20), z = num(entity,30,0);
+                addPoint(x,y,z);
+                if(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) fallback++;
+            }
+        } else if(type === "POINT"){
+            addPoint(num(entity,10),num(entity,20),num(entity,30,0));
+        }
+    }
 
+    return {points:removeDuplicates(points), hypack:hypack, fallback:fallback};
+}
 
-    link.href =
-        url;
+/* ============================================================
+   DXF PARSER USED BY UNIFIED EXTRACT XYZ TOOL
+============================================================ */
 
+function processDXFText(text){
+    const pairs = makePairs(text);
+    const entities = splitEntities(pairs);
+    const endpoints = [];
 
-    const baseName =
-        chnOriginalFileName
-        .replace(
-            /\.[^/.]+$/,
-            ""
-        );
+    for(const entity of entities){
+        const type = getEntityType(entity);
 
+        if(type === "LINE"){
+            let p1={x:null,y:null,z:0};
+            let p2={x:null,y:null,z:0};
+            for(const p of entity){
+                if(p.code===10) p1.x=Number(p.value);
+                else if(p.code===20) p1.y=Number(p.value);
+                else if(p.code===30) p1.z=Number(p.value);
+                else if(p.code===11) p2.x=Number(p.value);
+                else if(p.code===21) p2.y=Number(p.value);
+                else if(p.code===31) p2.z=Number(p.value);
+            }
+            if(Number.isFinite(p1.x)&&Number.isFinite(p1.y)&&Number.isFinite(p2.x)&&Number.isFinite(p2.y)){
+                endpoints.push(p1,p2);
+            }
+        }
+        else if(type === "LWPOLYLINE"){
+            const vertices=parseLWPolyline(entity);
+            if(vertices.length===2) endpoints.push(vertices[0],vertices[1]);
+        }
+    }
 
-    link.download =
-        baseName +
-        "_nodes.xyz";
+    for(let i=0;i<entities.length;i++){
+        if(getEntityType(entities[i])!=="POLYLINE") continue;
+        let flags=0;
+        for(const p of entities[i]){
+            if(p.code===70){flags=Number(p.value);break;}
+        }
+        if((flags & 8)===0) continue;
 
+        const vertices=[];
+        let j=i+1;
+        for(;j<entities.length;j++){
+            const t=getEntityType(entities[j]);
+            if(t==="VERTEX"){
+                let x=null,y=null,z=0;
+                for(const p of entities[j]){
+                    if(p.code===10)x=Number(p.value);
+                    else if(p.code===20)y=Number(p.value);
+                    else if(p.code===30)z=Number(p.value);
+                }
+                if(Number.isFinite(x)&&Number.isFinite(y)) vertices.push({x,y,z});
+            } else if(t==="SEQEND") break;
+            else break;
+        }
+        if(vertices.length>=2) endpoints.push(vertices[0],vertices[vertices.length-1]);
+        i=j;
+    }
 
-    document.body.appendChild(link);
+    return removeDuplicates(endpoints);
+}
 
-    link.click();
+function makePairs(text){
+    const lines=text.replace(/\r/g,"").split("\n"), pairs=[];
+    for(let i=0;i+1<lines.length;i+=2){
+        const code=Number(lines[i].trim());
+        if(!Number.isFinite(code)) continue;
+        pairs.push({code,value:lines[i+1].trim()});
+    }
+    return pairs;
+}
 
-    document.body.removeChild(link);
+function splitEntities(pairs){
+    const entities=[]; let inside=false, current=null;
+    for(const p of pairs){
+        if(p.code===2 && p.value.toUpperCase()==="ENTITIES"){inside=true;continue;}
+        if(!inside) continue;
+        if(p.code===0 && p.value.toUpperCase()==="ENDSEC"){
+            if(current) entities.push(current);
+            break;
+        }
+        if(p.code===0){
+            if(current) entities.push(current);
+            current=[p];
+        } else if(current) current.push(p);
+    }
+    return entities;
+}
 
+function getEntityType(e){
+    const p=e.find(x=>x.code===0);
+    return p ? p.value.toUpperCase() : "";
+}
 
-    URL.revokeObjectURL(url);
+function parseLWPolyline(entity){
+    const vertices=[]; let x=null,y=null,z=0;
+    for(const p of entity){
+        if(p.code===10){
+            if(x!==null && y!==null) vertices.push({x,y,z});
+            x=Number(p.value); y=null; z=0;
+        } else if(p.code===20 && x!==null) y=Number(p.value);
+        else if(p.code===30 && x!==null) z=Number(p.value);
+    }
+    if(x!==null && y!==null) vertices.push({x,y,z});
+    return vertices;
+}
 
-});
-
+function removeDuplicates(points){
+    const result=[], seen=new Set();
+    for(const p of points){
+        const x=Number(p.x.toFixed(9)), y=Number(p.y.toFixed(9)), z=Number(p.z.toFixed(9));
+        const key=x+"|"+y+"|"+z;
+        if(!seen.has(key)){seen.add(key);result.push({x,y,z});}
+    }
+    return result;
+}
 
 
 /* ============================================================
-   CHN CLEAR
+   COMBINE XYZ
 ============================================================ */
 
-document
-.getElementById("chnClearBtn")
-.addEventListener("click", function() {
+let combineParts = [];
+let combineOutputReady = false;
 
+const combineProcessBtn = document.getElementById("combineProcessBtn");
+const combineDownloadBtn = document.getElementById("combineDownloadBtn");
+const combineClearBtn = document.getElementById("combineClearBtn");
+const combineStatus = document.getElementById("combineStatus");
+const combineRemoveOverlap = document.getElementById("combineRemoveOverlap");
+const combineZAdjustment = document.getElementById("combineZAdjustment");
+const combineInvertZ = document.getElementById("combineInvertZ");
+const combineRound = document.getElementById("combineRound");
 
-    document.getElementById(
-        "chnFile"
-    ).value = "";
+function setCombineStatus(message, type) {
+    combineStatus.className = type || "";
+    combineStatus.textContent = message;
+}
 
+/*
+   Large-file-safe XYZ overlap removal.
+   A spatial hash is used instead of comparing every point with every point.
+   Default overlap tolerance:
+      XY distance <= 3.0 ft
+      Z difference <= 0.15 ft
+*/
+function parseXYZForOverlap(text) {
+    const points = [];
+    const lines = text.split(/\r?\n/);
 
-    document.getElementById(
-        "chnStatus"
-    ).innerHTML = "";
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
 
+        const parts = line.split(/\s+/);
+        if (parts.length < 3) continue;
 
-    document.getElementById(
-        "chnResult"
-    ).textContent = "";
+        const x = Number(parts[0]);
+        const y = Number(parts[1]);
+        const z = Number(parts[2]);
 
+        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+            points.push({x:x, y:y, z:z});
+        }
+    }
+    return points;
+}
 
-    document.getElementById(
-        "chnDownloadBtn"
-    ).style.display = "none";
+function makeSpatialHash(points, cellSize) {
+    const map = new Map();
 
+    for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const ix = Math.floor(p.x / cellSize);
+        const iy = Math.floor(p.y / cellSize);
+        const key = ix + "," + iy;
 
-    chnOutputText = "";
+        let bucket = map.get(key);
+        if (!bucket) {
+            bucket = [];
+            map.set(key, bucket);
+        }
+        bucket.push(p);
+    }
 
-    chnOriginalFileName = "";
+    return map;
+}
 
+function hasOverlap(point, spatialHash, cellSize, xyTolerance, zTolerance) {
+    const ix = Math.floor(point.x / cellSize);
+    const iy = Math.floor(point.y / cellSize);
+    const tol2 = xyTolerance * xyTolerance;
+
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const bucket = spatialHash.get((ix + dx) + "," + (iy + dy));
+            if (!bucket) continue;
+
+            for (let j = 0; j < bucket.length; j++) {
+                const q = bucket[j];
+                const ddx = point.x - q.x;
+                const ddy = point.y - q.y;
+
+                if ((ddx * ddx + ddy * ddy) <= tol2 &&
+                    Math.abs(point.z - q.z) <= zTolerance) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+function applyCombineZOptions(text) {
+    const adjustment = Number(combineZAdjustment.value);
+    if (!Number.isFinite(adjustment)) {
+        throw new Error("Please enter a valid Z adjustment value.");
+    }
+
+    const lines = text.split(/\r?\n/);
+    const output = [];
+    let changed = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+        const originalLine = lines[i];
+        const line = originalLine.trim();
+
+        if (!line) {
+            output.push(originalLine);
+            continue;
+        }
+
+        const parts = line.split(/\s+/);
+        if (parts.length < 3) {
+            output.push(originalLine);
+            continue;
+        }
+
+        const x = Number(parts[0]);
+        const y = Number(parts[1]);
+        const z = Number(parts[2]);
+
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+            output.push(originalLine);
+            continue;
+        }
+
+        let newZ = z + adjustment;
+        if (combineInvertZ.checked) newZ = -newZ;
+
+        if (combineRound.checked) {
+            parts[0] = x.toFixed(2);
+            parts[1] = y.toFixed(2);
+            parts[2] = roundHalfUp(newZ, 1);
+        } else {
+            parts[0] = String(x);
+            parts[1] = String(y);
+            parts[2] = String(newZ);
+        }
+
+        output.push(parts.join(" "));
+        changed++;
+    }
+
+    return { text: output.join("\n").replace(/\s+$/, ""), changed: changed };
+}
+
+function removeOverlapFromLaterFile(previousText, laterText) {
+    const previousPoints = parseXYZForOverlap(previousText);
+    const spatialHash = makeSpatialHash(previousPoints, 3.0);
+    const lines = laterText.split(/\r?\n/);
+    const output = [];
+    let removed = 0;
+    let valid = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+        const originalLine = lines[i];
+        const line = originalLine.trim();
+
+        if (!line) {
+            output.push(originalLine);
+            continue;
+        }
+
+        const parts = line.split(/\s+/);
+        if (parts.length < 3) {
+            output.push(originalLine);
+            continue;
+        }
+
+        const x = Number(parts[0]);
+        const y = Number(parts[1]);
+        const z = Number(parts[2]);
+
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+            output.push(originalLine);
+            continue;
+        }
+
+        valid++;
+
+        if (hasOverlap({x:x, y:y, z:z}, spatialHash, 3.0, 3.0, 0.15)) {
+            removed++;
+        } else {
+            output.push(originalLine);
+        }
+    }
+
+    return {
+        text: output.join("\n").replace(/\s+$/, ""),
+        removed: removed,
+        valid: valid,
+        referencePoints: previousPoints.length
+    };
+}
+
+combineProcessBtn.addEventListener("click", async function () {
+    const files = [];
+
+    for (let i = 1; i <= 6; i++) {
+        const input = document.getElementById("combineFile" + i);
+        if (input.files.length) {
+            files.push({ number: i, file: input.files[0] });
+        }
+    }
+
+    combineParts = [];
+    combineOutputReady = false;
+    combineDownloadBtn.style.display = "none";
+
+    if (!files.length) {
+        setCombineStatus("Please select at least one XYZ file.", "error");
+        return;
+    }
+
+    try {
+        combineProcessBtn.disabled = true;
+        combineProcessBtn.textContent = "Processing...";
+
+        let totalBytes = 0;
+        let totalRemoved = 0;
+        let previousText = null;
+
+        for (let n = 0; n < files.length; n++) {
+            const item = files[n];
+
+            setCombineStatus(
+                "Reading File " + item.number + ": " + item.file.name +
+                "\n\nFiles processed: " + n + " of " + files.length,
+                "info"
+            );
+
+            let text = await item.file.text();
+            text = text.replace(/^\uFEFF/, "").replace(/\s+$/, "");
+
+            if (!text.length) {
+                previousText = text;
+                continue;
+            }
+
+            if (combineRemoveOverlap.checked && n > 0 && previousText !== null) {
+                setCombineStatus(
+                    "Checking File " + item.number + " for overlap...\n\n" +
+                    "File " + files[n - 1].number + " → File " + item.number,
+                    "info"
+                );
+
+                const cleaned = removeOverlapFromLaterFile(previousText, text);
+                text = cleaned.text;
+                totalRemoved += cleaned.removed;
+
+                setCombineStatus(
+                    "File " + item.number + " complete.\n\n" +
+                    "Overlap points removed: " + cleaned.removed.toLocaleString() +
+                    "\nReference points in File " + files[n - 1].number + ": " +
+                    cleaned.referencePoints.toLocaleString(),
+                    "info"
+                );
+            }
+
+            if (text.length) {
+                const adjusted = applyCombineZOptions(text);
+                text = adjusted.text;
+                combineParts.push(text);
+            }
+
+            previousText = text;
+            totalBytes += item.file.size;
+
+            await new Promise(function(resolve) {
+                setTimeout(resolve, 0);
+            });
+        }
+
+        if (!combineParts.length) {
+            throw new Error("The selected files contain no data.");
+        }
+
+        combineOutputReady = true;
+        combineDownloadBtn.style.display = "inline-block";
+
+        let message =
+            "Processing complete.\n\n" +
+            "Files combined: " + files.length +
+            "\nTotal input size: " +
+            (totalBytes / 1024 / 1024).toFixed(2) + " MB";
+
+        if (combineRemoveOverlap.checked) {
+            message += "\nOverlap points removed: " + totalRemoved.toLocaleString();
+        }
+
+        message += "\n\nReady to download.";
+
+        setCombineStatus(message, "success");
+
+    } catch (e) {
+        combineParts = [];
+        combineOutputReady = false;
+        combineDownloadBtn.style.display = "none";
+        setCombineStatus("Error:\n\n" + (e.message || e), "error");
+    } finally {
+        combineProcessBtn.disabled = false;
+        combineProcessBtn.textContent = "Process";
+    }
 });
 
+combineDownloadBtn.addEventListener("click", function () {
+    if (!combineOutputReady || !combineParts.length) {
+        alert("Please process the files first.");
+        return;
+    }
 
+    const output = combineParts.join("\n") + "\n";
+    const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = combineRemoveOverlap.checked
+        ? "combined_XYZ_overlap_removed.xyz"
+        : "combined_XYZ.xyz";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function() {
+        URL.revokeObjectURL(url);
+    }, 2000);
+});
+
+combineClearBtn.addEventListener("click", function () {
+    for (let i = 1; i <= 6; i++) {
+        document.getElementById("combineFile" + i).value = "";
+    }
+
+    combineParts = [];
+    combineOutputReady = false;
+    combineDownloadBtn.style.display = "none";
+    combineRemoveOverlap.checked = false;
+    combineZAdjustment.value = "0";
+    combineInvertZ.checked = false;
+    combineRound.checked = true;
+    combineStatus.className = "";
+    combineStatus.textContent = "";
+});
 
 /* ============================================================
    CLEAR ALL
@@ -1317,22 +1572,18 @@ document
 .getElementById("clearAllBtn")
 .addEventListener("click", function() {
 
-    /* MTX */
-    document.getElementById("mtxFile").value = "";
-    document.getElementById("mtxZ").value = "0";
-    document.getElementById("mtxStatus").innerHTML = "";
-    document.getElementById("mtxResult").textContent = "";
-    document.getElementById("mtxDownloadBtn").style.display = "none";
-    mtxOutputText = "";
-    mtxOriginalFileName = "";
-
-    /* CHN */
-    document.getElementById("chnFile").value = "";
-    document.getElementById("chnStatus").innerHTML = "";
-    document.getElementById("chnResult").textContent = "";
-    document.getElementById("chnDownloadBtn").style.display = "none";
-    chnOutputText = "";
-    chnOriginalFileName = "";
+    /* Extract XYZ */
+    document.getElementById("extractType").value = "mtx";
+    document.getElementById("extractMtxZ").value = "0";
+    document.getElementById("extractFile").value = "";
+    document.getElementById("extractFileName").textContent = "No file selected";
+    document.getElementById("extractStatus").innerHTML = "";
+    document.getElementById("extractResult").textContent = "";
+    document.getElementById("extractDownloadBtn").style.display = "none";
+    document.getElementById("extractProcessBtn").disabled = true;
+    extractOutputText = "";
+    extractOriginalFileName = "";
+    updateExtractFileType();
 
     /* VDATUM */
     document.getElementById("vdatumFile").value = "";
@@ -3616,11 +3867,15 @@ async function decodeTiff(buf) {
 
 /* ---------- TIFF writing (uncompressed 8-bit RGB / RGBA) ---------- */
 
-function encodeTiff(data, W, H, ch) {
+function encodeTiff(data, W, H, ch, geo) {
   const rps = Math.max(1, Math.floor(65536 / (W * ch)));
   const nStrips = Math.ceil(H / rps);
   const dataLen = W * H * ch;
-  const nTags = ch === 4 ? 14 : 13;
+
+  /* Optional embedded GeoTIFF information.  The raster itself remains
+     uncompressed 8-bit RGB/RGBA, just like the normal TIFF writer. */
+  const hasGeo = !!geo;
+  const nTags = (ch === 4 ? 14 : 13) + (hasGeo ? 2 : 0);
   let pos = 8 + dataLen;
   if (pos % 2) pos++;
   const bitsOff = pos; pos += ch * 2;
@@ -3628,6 +3883,15 @@ function encodeTiff(data, W, H, ch) {
   const yresOff = pos; pos += 8;
   const soOff = pos; pos += nStrips > 1 ? nStrips * 4 : 0;
   const scOff = pos; pos += nStrips > 1 ? nStrips * 4 : 0;
+
+  let mtOff = 0, keyOff = 0;
+  if (hasGeo) {
+    if (pos % 8) pos += 8 - (pos % 8);
+    mtOff = pos; pos += 16 * 8;
+    if (pos % 2) pos++;
+    keyOff = pos; pos += 20 * 2; // GeoKeyDirectory: 4 header + 4 keys x 4 shorts
+  }
+
   const ifdOff = pos;
   const total = ifdOff + 2 + nTags * 12 + 4;
   const buf = new ArrayBuffer(total);
@@ -3637,15 +3901,35 @@ function encodeTiff(data, W, H, ch) {
   for (let i = 0; i < ch; i++) dv.setUint16(bitsOff + i * 2, 8, true);
   dv.setUint32(xresOff, 72, true); dv.setUint32(xresOff + 4, 1, true);
   dv.setUint32(yresOff, 72, true); dv.setUint32(yresOff + 4, 1, true);
+
   const counts = [];
-  for (let s = 0; s < nStrips; s++) {
-    const rows = Math.min(rps, H - s * rps);
+  for (let st = 0; st < nStrips; st++) {
+    const rows = Math.min(rps, H - st * rps);
     counts.push(rows * W * ch);
     if (nStrips > 1) {
-      dv.setUint32(soOff + s * 4, 8 + s * rps * W * ch, true);
-      dv.setUint32(scOff + s * 4, rows * W * ch, true);
+      dv.setUint32(soOff + st * 4, 8 + st * rps * W * ch, true);
+      dv.setUint32(scOff + st * 4, rows * W * ch, true);
     }
   }
+
+  if (hasGeo) {
+    const m = geo.matrix;
+    for (let i = 0; i < 16; i++) dv.setFloat64(mtOff + i * 8, Number(m[i]), true);
+
+    const epsg = Number(geo.epsg);
+    const keys = [
+      1024, 0, 1, 1,       // GTModelTypeGeoKey = Projected
+      1025, 0, 1, 1,       // GTRasterTypeGeoKey = PixelIsArea
+      2048, 0, 1, 4269,    // GeographicTypeGeoKey = NAD83
+      3072, 0, 1, epsg     // ProjectedCSTypeGeoKey
+    ];
+    dv.setUint16(keyOff, 1, true);      // GeoTIFF version
+    dv.setUint16(keyOff + 2, 1, true);  // revision major
+    dv.setUint16(keyOff + 4, 0, true);  // revision minor
+    dv.setUint16(keyOff + 6, 4, true);  // number of keys
+    for (let i = 0; i < keys.length; i++) dv.setUint16(keyOff + 8 + i * 2, keys[i], true);
+  }
+
   let e = ifdOff;
   dv.setUint16(e, nTags, true); e += 2;
   function entry(tag, type, count, value) {
@@ -3667,16 +3951,45 @@ function encodeTiff(data, W, H, ch) {
   entry(284, 3, 1, 1);
   entry(296, 3, 1, 2);
   if (ch === 4) entry(338, 3, 1, 2);
+  if (hasGeo) {
+    entry(34264, 12, 16, mtOff); // ModelTransformationTag
+    entry(34735, 3, 20, keyOff); // GeoKeyDirectoryTag
+  }
   dv.setUint32(e, 0, true);
   return buf;
 }
-
 /* ---------- Georeferencing math ---------- */
 
 function parseTfw(text) {
   const v = text.split(/\s+/).filter(Boolean).slice(0, 6).map(Number);
   if (v.length < 6 || v.some(x => !isFinite(x))) throw new Error("The TFW file must contain 6 numbers.");
   return v; /* A D B E C F */
+}
+
+/* Read embedded GeoTIFF CRS and convert its pixel-corner georeferencing to TFW pixel-center form. */
+function embeddedGeoTfw(image) {
+  const fd = image.getFileDirectory ? image.getFileDirectory() : {};
+  const rawKeys = image.getGeoKeys ? image.getGeoKeys() : null;
+  const keys = rawKeys || {};
+  const epsg = Number(keys.ProjectedCSTypeGeoKey || keys.ProjectedCRSGeoKey || 0);
+  const zones = {2260:"NYE",6538:"NYE",2263:"NYLI",6539:"NYLI",3424:"NJ"};
+  const zone = zones[epsg] || null;
+
+  const mt = fd.ModelTransformation;
+  if (mt && mt.length >= 16) {
+    const a=Number(mt[0]), b=Number(mt[1]), d=Number(mt[4]), e=Number(mt[5]);
+    const c=Number(mt[3]), f=Number(mt[7]);
+    if ([a,b,c,d,e,f].every(Number.isFinite))
+      return {tfw:[a,d,b,e,c+.5*a+.5*b,f+.5*d+.5*e],zone,epsg,source:"Embedded GeoTIFF ModelTransformation"};
+  }
+
+  const scale=fd.ModelPixelScale, tie=fd.ModelTiepoint;
+  if (scale && tie && scale.length>=2 && tie.length>=6) {
+    const sx=Number(scale[0]), sy=Math.abs(Number(scale[1])), tx=Number(tie[3]), ty=Number(tie[4]);
+    if ([sx,sy,tx,ty].every(Number.isFinite))
+      return {tfw:[sx,0,0,-sy,tx+sx/2,ty-sy/2],zone,epsg,source:"Embedded GeoTIFF ModelPixelScale/ModelTiepoint"};
+  }
+  return null;
 }
 
 /* Fit X = a*u + b*v + c, Y = d*u + e*v + f over the whole image (u,v = continuous pixel coords). */
@@ -3781,15 +4094,72 @@ async function warp(img, T, outW, outH, X0, Ytop, ps, onProgress) {
 async function convertImage(imgBuf, tfwStr, dir, mode, onProgress) {
   const [from, to] = dir.split(">");
   const {width: W, height: H} = imageSize(imgBuf);
-  const S = parseTfw(tfwStr);
+  let S = null, sourceInfo = "";
+  const geoTiff = await GeoTIFF.fromArrayBuffer(imgBuf);
+  const geoImage = await geoTiff.getImage();
+  const embedded = embeddedGeoTfw(geoImage);
+  if (embedded) {
+    if (embedded.zone && embedded.zone !== from) {
+      throw new Error("The TIFF is embedded as " + embedded.zone + " (EPSG:" + embedded.epsg + "), but the selected conversion starts from " + from + ".");
+    }
+    S = embedded.tfw;
+    sourceInfo = embedded.source + (embedded.epsg ? " (EPSG:" + embedded.epsg + ")" : "");
+  }
+  if (!S && tfwStr) {
+    S = parseTfw(tfwStr);
+    sourceInfo = "External TFW";
+  }
+  if (!S) throw new Error("No embedded GeoTIFF georeferencing or TFW was found.");
   const fit = fitAffine(S, W, H, from, to);
   const [a, b, c, d, e, f] = fit.T;
   const rot = Math.atan2(d, a) * 180 / Math.PI;
   const scale = Math.hypot(a, d);
-  const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale};
+  const info = {width: W, height: H, maxErr: fit.maxErr, rotation: rot, pixelSize: scale, sourceInfo};
+  if (mode === "geotiff") {
+    const img = await decodeTiff(imgBuf);
+    const vals = [
+      a,
+      d,
+      b,
+      e,
+      a * 0.5 + b * 0.5 + c,
+      d * 0.5 + e * 0.5 + f
+    ];
+    const epsg = to === "NJ" ? 3424 : (to === "NYLI" ? 2263 : 2260);
+    const tif = encodeTiff(img.data, img.width, img.height, img.ch, {
+      epsg,
+      matrix: [
+        a, b, 0, vals[4],
+        d, e, 0, vals[5],
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ]
+    });
+    return {...info, tfw: tfwText(vals), tfwValues: vals, tif, outW: img.width, outH: img.height, geoEpsg: epsg};
+  }
   if (mode === "rot") {
-    const vals = [a, d, b, e, a * 0.5 + b * 0.5 + c, d * 0.5 + e * 0.5 + f];
-    return {...info, tfw: tfwText(vals), tfwValues: vals, tif: null};
+    /*
+       IMPORTANT FOR GLOBAL MAPPER:
+       Never return the original TIFF here.  A Global Mapper TIFF can contain
+       embedded GeoTIFF georeferencing for the OLD coordinate system.  If the
+       original bytes are downloaded, that embedded NYLI georeferencing can
+       override/conflict with the new TFW.
+
+       Decode the pixels and write a completely NEW plain TIFF.  The new TIFF
+       therefore contains no old GeoTIFF georeferencing tags, and the matching
+       TFW supplies the new NJ 2900 position.
+    */
+    const img = await decodeTiff(imgBuf);
+    const vals = [
+      a,
+      d,
+      b,
+      e,
+      a * 0.5 + b * 0.5 + c,
+      d * 0.5 + e * 0.5 + f
+    ];
+    const tif = encodeTiff(img.data, img.width, img.height, img.ch);
+    return {...info, tfw: tfwText(vals), tfwValues: vals, tif, outW: img.width, outH: img.height};
   }
   /* north-up */
   const img = await decodeTiff(imgBuf);
@@ -3812,14 +4182,14 @@ window.ImgCore = {parseIFD, imageSize, decodeTiff, encodeTiff, fitAffine, conver
 
 if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) {
   const $ = id => document.getElementById(id);
-  let imgFile = null, tfwFile = null, outTfw = null, outTif = null, outBase = "";
+  let imgFile = null, tfwFile = null, outTfw = null, outTif = null, outGeo = null, outBase = "";
 
   function resetOutput() {
-    outTfw = outTif = null;
-    $("ciDlTfw").style.display = "none"; $("ciDlTif").style.display = "none";
+    outTfw = outTif = outGeo = null;
+    $("ciDlTfw").style.display = "none"; $("ciDlTif").style.display = "none"; $("ciDlGeo").style.display = "none";
     $("ciStatus").innerHTML = ""; $("ciResult").textContent = ""; $("ciProgress").style.display = "none";
   }
-  function ready() { $("ciConvertBtn").disabled = !(imgFile && tfwFile); }
+  function ready() { $("ciConvertBtn").disabled = !imgFile; }
 
   $("ciImg").addEventListener("change", e => { imgFile = e.target.files[0] || null; resetOutput(); ready(); });
   $("ciTfw").addEventListener("change", e => { tfwFile = e.target.files[0] || null; resetOutput(); ready(); });
@@ -3843,14 +4213,22 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
       $("ciStatus").innerHTML = '<div class="info">Working...</div>';
       await new Promise(r => setTimeout(r));
       const imgBuf = await imgFile.arrayBuffer();
-      const tfwStr = await tfwFile.text();
+      const tfwStr = tfwFile ? await tfwFile.text() : null;
       const res = await convertImage(imgBuf, tfwStr, dir, mode, p => { bar.value = Math.round(p * 100); });
-      outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : "");
+      outBase = outName(imgFile.name, from, to) + (mode === "north" ? "_northup" : (mode === "geotiff" ? "_GeoTiff" : ""));
       outTfw = new Blob([res.tfw], {type: "text/plain"});
-      outTif = new Blob([res.tif || imgBuf], {type: "image/tiff"});
-      $("ciDlTfw").style.display = "inline-block"; $("ciDlTif").style.display = "inline-block";
+      /* res.tif is ALWAYS a newly encoded TIFF.  Do not fall back to the
+         original bytes because Global Mapper TIFFs may contain old embedded
+         GeoTIFF georeferencing. */
+      outTif = new Blob([res.tif], {type: "image/tiff"});
+      outGeo = mode === "geotiff" ? outTif : null;
+      $("ciDlTfw").style.display = mode === "geotiff" ? "none" : "inline-block";
+      $("ciDlTif").style.display = mode === "geotiff" ? "none" : "inline-block";
+      $("ciDlGeo").style.display = mode === "geotiff" ? "inline-block" : "none";
       $("ciStatus").innerHTML = '<div class="success">Done. ' + res.width + ' x ' + res.height + ' px' +
-        (mode === "north" ? ' resampled to ' + res.outW + ' x ' + res.outH + ' px (' + res.ps + ' ft pixels)' : '') +
+        (mode === "north" ? ' resampled to ' + res.outW + ' x ' + res.outH + ' px (' + res.ps + ' ft pixels)' :
+         mode === "geotiff" ? ' NEW GeoTIFF with embedded EPSG:' + res.geoEpsg + ' georeferencing (no TFW required)' :
+         ' NEW TIFF written without the original embedded georeferencing') +
         '. Fit error ' + res.maxErr.toFixed(3) + ' ft.</div>';
       $("ciResult").textContent = res.tfw.replace(/\r\n/g, "\n").trim();
     } catch (err) {
@@ -3870,6 +4248,7 @@ if (typeof document !== "undefined" && document.getElementById("ciConvertBtn")) 
   }
   $("ciDlTfw").addEventListener("click", () => outTfw && save(outTfw, outBase + ".tfw"));
   $("ciDlTif").addEventListener("click", () => outTif && save(outTif, outBase + ".tif"));
+  $("ciDlGeo").addEventListener("click", () => outGeo && save(outGeo, outBase + ".tif"));
 
   const clr = $("clearAllBtn");
   if (clr) clr.addEventListener("click", () => {
